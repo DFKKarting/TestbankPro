@@ -686,8 +686,9 @@ function parseSpx(buffer, filename) {
   let datum = '';
   if (datetimeRaw) {
     const [dp,tp] = datetimeRaw.split(' ');
-    if (dp&&tp) { const [d,m,y]=dp.split('/'); datum=`${y}-${m?.padStart(2,'0')}-${d?.padStart(2,'0')}T${tp}`; }
+    if (dp&&tp) { const [d,m,y]=dp.split('/'); datum=`${y}-${m?.padStart(2,'0')}-${d?.padStart(2,'0')}T${tp.slice(0,5)}`; }
   }
+  if (!datum) datum = new Date().toISOString().slice(0,16);
   const pwrMatch = latin1.match(/original_power=([\d.]+)[^/]*\/\s*([\d]+)/);
   const tqMatch  = latin1.match(/original_tq=([\d.]+)[^/]*\/\s*([\d]+)/);
   const rpmMatch = latin1.match(/max_rpm_engine=([\d]+)/);
@@ -1780,7 +1781,7 @@ async function runsOpslaan(){
     saveLocal(); await dbSave(bijgewerkt);
   }
   // Wis run-invoervelden, toon feedback, toon opgeslagen runs
-  pendingRuns=[]; ssPendingSave([]);
+  pendingRuns=[];
   const fb=document.getElementById('opslaan-feedback');
   if(fb){fb.style.display='block';setTimeout(()=>{fb.style.display='none';},2500);}
   renderSavedRunsInForm();
