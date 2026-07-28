@@ -922,7 +922,7 @@ function renderLijst(){
     let diagMsg='';
     if(!heeftSessies) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">Totaal in geheugen: <b>0 sessies</b> — controleer Supabase-verbinding of vernieuw de pagina (Ctrl+Shift+R).</div>`;
     else if(heeftZoek||heeftFilter) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig maar verborgen door actieve filter/zoekopdracht.</div>`;
-    else diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig maar gefilterd op motorstatus (niet-actieve motoren verborgen).</div>`;
+    else diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig. Ververs de pagina (Ctrl+Shift+R) als de sessies niet verschijnen.</div>`;
     h+=`<div class="empty-state"><div style="font-size:40px;margin-bottom:8px">🔍</div><div style="font-weight:600">Geen sessies gevonden</div>${diagMsg}</div>`;
   } else if(lijstOpen) {
     filtered.forEach(s=>{
@@ -1168,7 +1168,7 @@ function renderDetail(){
           <button class="btn-back" data-action="${cameFromMotoren?'naar-motor':'naar-lijst'}">←</button>
           <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
             <h2 class="page-title" style="margin:0">${esc(selected.motorNummer)}</h2>
-            ${eerste?.datum?`<span style="font-size:14px;color:#374151;font-weight:600">${fmtDt(eerste.datum)}</span>`:''}
+            ${(selected.createdAt||eerste?.datum)?`<span style="font-size:14px;color:#374151;font-weight:600">${fmtDt(selected.createdAt||eerste?.datum)}</span>`:''}
           </div>
           ${sessieStartTijd&&selected.id===sessieTimerSessieId
             ?`<div style="display:flex;align-items:center;gap:10px;margin-left:auto">
@@ -1547,7 +1547,7 @@ function hervattSessie(){
   const s=sessies.find(x=>x.id===sessieTimerSessieId);
   if(!s) return;
   _hervattData=s;
-  pendingRuns=[EMPTY_RUN()]; ssPendingSave([]);
+  pendingRuns=[EMPTY_RUN()];
   navigeer('nieuw');
 }
 function herstarTimer(){
@@ -1619,29 +1619,31 @@ async function addRunsNaarSessie(files){
   const fileArr=Array.from(files);
   const zone=document.getElementById('spx-drop-zone');
   if(zone) zone.style.opacity='0.5';
-  const newRuns=[];
-  for(const file of fileArr){
-    const buf=await file.arrayBuffer();
-    newRuns.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
+  try {
+    const newRuns=[];
+    for(const file of fileArr){
+      const buf=await file.arrayBuffer();
+      newRuns.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
+    }
+    detailPendingRuns=[...detailPendingRuns,...newRuns];
+    let container=document.getElementById('detail-pending-runs');
+    if(!container){
+      container=document.createElement('div');
+      container.id='detail-pending-runs';
+      const dropWrap=document.getElementById('spx-drop-zone')?.parentElement;
+      if(dropWrap) dropWrap.insertAdjacentElement('afterend',container);
+    }
+    container.innerHTML=`
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="sec-label" style="margin-bottom:0">Nieuwe runs (${detailPendingRuns.length}) — vul aan en sla op</div>
+          <button onclick="slaDetailRunsOp()" style="padding:7px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer" id="detail-runs-save-btn">Opslaan</button>
+        </div>
+        <div id="detail-pending-cards">${detailPendingRuns.map((r,i)=>runCardHtml(r,i,detailPendingRuns.length)).join('')}</div>
+      </div>`;
+  } finally {
+    if(zone) zone.style.opacity='1';
   }
-  detailPendingRuns=[...detailPendingRuns,...newRuns];
-  // Toon bewerkbare kaarten onder de dropzone
-  let container=document.getElementById('detail-pending-runs');
-  if(!container){
-    container=document.createElement('div');
-    container.id='detail-pending-runs';
-    const dropWrap=document.getElementById('spx-drop-zone')?.parentElement;
-    if(dropWrap) dropWrap.insertAdjacentElement('afterend',container);
-  }
-  container.innerHTML=`
-    <div style="margin-top:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="sec-label" style="margin-bottom:0">Nieuwe runs (${detailPendingRuns.length}) — vul aan en sla op</div>
-        <button onclick="slaDetailRunsOp()" style="padding:7px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer" id="detail-runs-save-btn">Opslaan</button>
-      </div>
-      <div id="detail-pending-cards">${detailPendingRuns.map((r,i)=>runCardHtml(r,i,detailPendingRuns.length)).join('')}</div>
-    </div>`;
-  if(zone) zone.style.opacity='1';
 }
 
 async function slaDetailRunsOp(){
@@ -1894,7 +1896,7 @@ async function handleFiles(files){
     runs.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
   }
   pendingRuns=runs;
-  ssSave('pending',[]);
+  ssPendingSave([]);
   document.getElementById('file-input').value='';
   navigeer('nieuw');
 }
