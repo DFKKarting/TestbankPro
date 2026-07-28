@@ -678,7 +678,7 @@ function setDbStatus(online) {
 }
 
 // ── SPX PARSER ────────────────────────────────────────────────────────────────
-function parseSpx(buffer, filename) {
+function parseSpx(buffer, filename, fileDate) {
   const bytes = new Uint8Array(buffer);
   const latin1 = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
   const get = k => { const m = latin1.match(new RegExp(k+'=([^\r\n]+)')); return m ? m[1].trim() : ''; };
@@ -688,7 +688,7 @@ function parseSpx(buffer, filename) {
     const [dp,tp] = datetimeRaw.split(' ');
     if (dp&&tp) { const [d,m,y]=dp.split('/'); datum=`${y}-${m?.padStart(2,'0')}-${d?.padStart(2,'0')}T${tp.slice(0,5)}`; }
   }
-  if (!datum) datum = new Date().toISOString().slice(0,16);
+  if (!datum) datum = new Date(fileDate||Date.now()).toISOString().slice(0,16);
   const pwrMatch = latin1.match(/original_power=([\d.]+)[^/]*\/\s*([\d]+)/);
   const tqMatch  = latin1.match(/original_tq=([\d.]+)[^/]*\/\s*([\d]+)/);
   const rpmMatch = latin1.match(/max_rpm_engine=([\d]+)/);
@@ -1588,7 +1588,7 @@ async function addSpxToForm(files){
   const newRuns=[];
   for(const file of fileArr){
     const buf=await file.arrayBuffer();
-    newRuns.push({...parseSpx(buf,file.name),id:uuid()});
+    newRuns.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
   }
   pendingRuns=[...pendingRuns,...newRuns];
   status.innerHTML=`<span style="color:#10b981;font-weight:600">✓ ${pendingRuns.length} run${pendingRuns.length!==1?'s':''} geladen</span><span style="color:#9ca3af;font-size:12px;margin-left:10px">Sleep meer bestanden om er nog toe te voegen</span>`;
@@ -1622,7 +1622,7 @@ async function addRunsNaarSessie(files){
   const newRuns=[];
   for(const file of fileArr){
     const buf=await file.arrayBuffer();
-    newRuns.push({...parseSpx(buf,file.name),id:uuid()});
+    newRuns.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
   }
   detailPendingRuns=[...detailPendingRuns,...newRuns];
   // Toon bewerkbare kaarten onder de dropzone
@@ -1891,7 +1891,7 @@ async function handleFiles(files){
   const runs=[];
   for(const file of files){
     const buf=await file.arrayBuffer();
-    runs.push({...parseSpx(buf,file.name),id:uuid()});
+    runs.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
   }
   pendingRuns=runs;
   ssSave('pending',[]);
