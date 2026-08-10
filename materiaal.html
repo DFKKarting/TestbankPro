@@ -291,9 +291,9 @@ async function verwijderAanvraag(id){
 
 async function slaatAanvraagOp(e){
   e.preventDefault();
-  const mtg = getMeeting();
-  if(!mtg){ alert('Geen actieve meeting.'); return; }
   const f = e.target;
+  const meeting_id = f.querySelector('#a-meeting').value;
+  if(!meeting_id){ alert('Kies een meeting.'); return; }
   const truck_id = f.querySelector('#a-truck').value;
   const onderdeel = f.querySelector('#a-onderdeel').value.trim();
   const aantal = parseInt(f.querySelector('#a-aantal').value)||1;
@@ -301,7 +301,7 @@ async function slaatAanvraagOp(e){
   const opmerking = f.querySelector('#a-opmerking').value.trim();
   if(!truck_id||!onderdeel) return;
   const {data,error} = await sb.from('aanvragen').insert({
-    meeting_id: mtg.id, truck_id, onderdeel, aantal, prioriteit,
+    meeting_id, truck_id, onderdeel, aantal, prioriteit,
     opmerking: opmerking||null,
     status: 'aangevraagd',
     aangevraagd_door: gebruiker.email,
@@ -475,6 +475,7 @@ function renderOverzicht(){
 
 function renderNieuw(){
   const mtg = getMeeting();
+  const hasMeetings = meetings.length > 0;
   return `<div class="head-row">
       <button class="btn-sm" onclick="navigeer('overzicht')">&larr; Terug</button>
       <h1 class="page-title">Onderdeel aanvragen</h1>
@@ -482,6 +483,18 @@ function renderNieuw(){
     <div class="form-card">
       <form id="form-aanvraag">
         <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label class="field-label">Meeting *</label>
+            <select class="sel" id="a-meeting" required>
+              <option value="">Kies meeting...</option>
+              ${meetings.map(m=>{
+                const van = m.datum ? fmtDatum(m.datum) : '';
+                const tot = m.datum_tot ? ' — '+fmtDatum(m.datum_tot) : '';
+                const label = esc(m.naam) + (van ? ' ('+van+tot+')' : '') + (m.actief?' ✓':'');
+                return `<option value="${m.id}" ${m.id===(mtg&&mtg.id)?'selected':''}>${label}</option>`;
+              }).join('')}
+            </select>
+          </div>
           <div class="field">
             <label class="field-label">Truck *</label>
             <select class="sel" id="a-truck" required>
@@ -508,11 +521,9 @@ function renderNieuw(){
           <label class="field-label">Opmerking</label>
           <textarea class="textarea" id="a-opmerking" placeholder="Extra info, locatie, ..."></textarea>
         </div>
-        ${mtg
-          ? `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#0c4a6e;margin-bottom:16px">&#128197; Meeting: <strong>${esc(mtg.naam)}</strong></div>`
-          : `<div class="error-box">Geen actieve meeting! Maak eerst een meeting aan.</div>`}
+        ${!hasMeetings?`<div class="error-box">Geen meetings beschikbaar. Maak eerst een meeting aan.</div>`:''}
         <div class="actions-row">
-          <button class="btn-blauw" type="submit" ${!mtg?'disabled':''}>Aanvraag indienen</button>
+          <button class="btn-blauw" type="submit" ${!hasMeetings?'disabled':''}>Aanvraag indienen</button>
           <button class="btn-outline" type="button" onclick="navigeer('overzicht')">Annuleren</button>
         </div>
       </form>
