@@ -226,6 +226,7 @@ function aanvraagKaart(a, toonTruck){
       <div class="aanvraag-meta">
         <span class="badge-aantal">&times;${a.aantal||1}</span>
         <span class="badge-prio ${p.cls}">${p.label}</span>
+        ${a.bestemming?`<span style="color:#1d4ed8;font-weight:600;font-size:12px">&#x1F4CD; ${esc(a.bestemming)}</span>`:''}
         ${toonTruck&&truck?`<span style="color:#6b7280">&#x1F69B; ${esc(truck.naam)}</span>`:''}
         <span style="color:#9ca3af;font-size:11px">${esc(a.aangevraagd_door||'')}</span>
       </div>
@@ -292,8 +293,7 @@ async function verwijderAanvraag(id){
 async function slaatAanvraagOp(e){
   e.preventDefault();
   const f = e.target;
-  const meeting_id = f.querySelector('#a-meeting').value;
-  if(!meeting_id){ alert('Kies een meeting.'); return; }
+  const bestemming = f.querySelector('#a-bestemming').value.trim();
   const truck_id = f.querySelector('#a-truck').value;
   const onderdeel = f.querySelector('#a-onderdeel').value.trim();
   const aantal = parseInt(f.querySelector('#a-aantal').value)||1;
@@ -301,7 +301,7 @@ async function slaatAanvraagOp(e){
   const opmerking = f.querySelector('#a-opmerking').value.trim();
   if(!truck_id||!onderdeel) return;
   const {data,error} = await sb.from('aanvragen').insert({
-    meeting_id, truck_id, onderdeel, aantal, prioriteit,
+    meeting_id: getMeeting()?.id || null, truck_id, onderdeel, aantal, prioriteit, bestemming: bestemming||null,
     opmerking: opmerking||null,
     status: 'aangevraagd',
     aangevraagd_door: gebruiker.email,
@@ -474,8 +474,6 @@ function renderOverzicht(){
 }
 
 function renderNieuw(){
-  const mtg = getMeeting();
-  const hasMeetings = meetings.length > 0;
   return `<div class="head-row">
       <button class="btn-sm" onclick="navigeer('overzicht')">&larr; Terug</button>
       <h1 class="page-title">Onderdeel aanvragen</h1>
@@ -484,16 +482,8 @@ function renderNieuw(){
       <form id="form-aanvraag">
         <div class="form-grid" style="margin-bottom:14px">
           <div class="field">
-            <label class="field-label">Meeting *</label>
-            <select class="sel" id="a-meeting" required>
-              <option value="">Kies meeting...</option>
-              ${meetings.map(m=>{
-                const van = m.datum ? fmtDatum(m.datum) : '';
-                const tot = m.datum_tot ? ' — '+fmtDatum(m.datum_tot) : '';
-                const label = esc(m.naam) + (van ? ' ('+van+tot+')' : '') + (m.actief?' ✓':'');
-                return `<option value="${m.id}" ${m.id===(mtg&&mtg.id)?'selected':''}>${label}</option>`;
-              }).join('')}
-            </select>
+            <label class="field-label">Bestemming</label>
+            <input class="inp" id="a-bestemming" placeholder="bv. Genk, Lonato, werkplaats..." autocomplete="off">
           </div>
           <div class="field">
             <label class="field-label">Truck *</label>
@@ -521,9 +511,8 @@ function renderNieuw(){
           <label class="field-label">Opmerking</label>
           <textarea class="textarea" id="a-opmerking" placeholder="Extra info, locatie, ..."></textarea>
         </div>
-        ${!hasMeetings?`<div class="error-box">Geen meetings beschikbaar. Maak eerst een meeting aan.</div>`:''}
         <div class="actions-row">
-          <button class="btn-blauw" type="submit" ${!hasMeetings?'disabled':''}>Aanvraag indienen</button>
+          <button class="btn-blauw" type="submit">Aanvraag indienen</button>
           <button class="btn-outline" type="button" onclick="navigeer('overzicht')">Annuleren</button>
         </div>
       </form>
