@@ -129,7 +129,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
         <div id="nav-beheer" style="display:none">
           <div class="nav-divider"></div>
           <div class="nav-header">Beheer</div>
-          <button class="nav-item" id="nav-meetings" onclick="navigeer('meetings')">Meetings</button>
           <button class="nav-item" id="nav-instellingen" onclick="navigeer('instellingen')">Instellingen</button>
         </div>
         <div id="nav-testbank" style="display:none">
@@ -180,11 +179,10 @@ const PRIO_VOLGORDE = { urgent:0, hoog:1, normaal:2, laag:3 };
 let sb = null;
 let gebruiker = null;
 let rollen = new Set();
-let meetings = [];
 let trucks = [];
 let aanvragen = [];
 let gebruikers = [];
-let vertrekControles = [];
+let gecontroleerd = new Set();
 let view = 'overzicht';
 let statusFilter = 'alles';
 let realtimeSub = null;
@@ -194,7 +192,7 @@ function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('
 document.addEventListener('click', e => { if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
 
 function updateNavActief(){
-  ['overzicht','nieuw','werkplaats','vertrek','meetings','instellingen'].forEach(v => {
+  ['overzicht','nieuw','werkplaats','vertrek','instellingen'].forEach(v => {
     document.getElementById('nav-'+v)?.classList.toggle('active', view===v);
   });
 }
@@ -205,8 +203,6 @@ async function doLogout(){
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
-function getMeeting(){ return meetings.find(m=>m.actief) || meetings[0] || null; }
-
 function statusSelHtml(id, huidig){
   const s = STATUS[huidig] || STATUS.aangevraagd;
   const opts = Object.entries(STATUS).map(([k,v]) =>
@@ -241,21 +237,13 @@ function aanvraagKaart(a, toonTruck){
 
 // ── DATA LADEN ────────────────────────────────────────────────────────────────
 async function laadAlles(){
-  const [rm, rt, rv] = await Promise.all([
-    sb.from('meetings').select('*').order('datum',{ascending:false}),
-    sb.from('trucks').select('*').eq('actief',true).order('volgorde'),
-    sb.from('vertrek_controles').select('*'),
-  ]);
-  meetings = rm.data || [];
-  trucks = rt.data || [];
-  vertrekControles = rv.data || [];
+  const {data} = await sb.from('trucks').select('*').eq('actief',true).order('volgorde');
+  trucks = data || [];
   await laadAanvragen();
 }
 
 async function laadAanvragen(){
-  const mtg = getMeeting();
-  if(!mtg){ aanvragen=[]; return; }
-  const {data,error} = await sb.from('aanvragen').select('*').eq('meeting_id',mtg.id).order('created_at',{ascending:false});
+  const {data,error} = await sb.from('aanvragen').select('*').order('created_at',{ascending:false});
   if(error){ console.error(error); aanvragen=[]; return; }
   aanvragen = data || [];
 }
@@ -301,7 +289,7 @@ async function slaatAanvraagOp(e){
   const opmerking = f.querySelector('#a-opmerking').value.trim();
   if(!truck_id||!onderdeel) return;
   const {data,error} = await sb.from('aanvragen').insert({
-    meeting_id: getMeeting()?.id || null, truck_id, onderdeel, aantal, prioriteit, bestemming: bestemming||null,
+    truck_id, onderdeel, aantal, prioriteit, bestemming: bestemming||null,
     opmerking: opmerking||null,
     status: 'aangevraagd',
     aangevraagd_door: gebruiker.email,
@@ -312,46 +300,13 @@ async function slaatAanvraagOp(e){
   navigeer('overzicht');
 }
 
-async function markeerTruckGecontroleerd(truckId){
-  const mtg = getMeeting();
-  if(!mtg) return;
-  if(vertrekControles.find(v=>v.meeting_id===mtg.id&&v.truck_id===truckId)) return;
-  const {data} = await sb.from('vertrek_controles').insert({
-    meeting_id: mtg.id, truck_id: truckId,
-    gecontroleerd_door: gebruiker.email,
-    gecontroleerd_op: new Date().toISOString(),
-  }).select().single();
-  if(data) vertrekControles.push(data);
+function markeerTruckGecontroleerd(truckId){
+  gecontroleerd.add(truckId);
   render();
 }
 
-async function slaatMeetingOp(e){
-  e.preventDefault();
-  const naam = e.target.querySelector('#m-naam').value.trim();
-  const circuit = e.target.querySelector('#m-circuit').value.trim();
-  const datum = e.target.querySelector('#m-datum-van').value;
-  const datum_tot = e.target.querySelector('#m-datum-tot').value;
-  if(!naam) return;
-  const {data} = await sb.from('meetings').insert({naam, circuit:circuit||null, datum:datum||null, datum_tot:datum_tot||null, actief:false}).select().single();
-  if(data) meetings.unshift(data);
-  e.target.reset();
-  render();
-}
-
-async function setActieveMeeting(id){
-  await sb.from('meetings').update({actief:false}).eq('actief',true);
-  await sb.from('meetings').update({actief:true}).eq('id',id);
-  meetings = meetings.map(m=>({...m, actief: m.id===id}));
-  await laadAanvragen();
-  render();
-}
-
-async function verwijderMeeting(id){
-  if(!confirm('Meeting en alle bijbehorende aanvragen verwijderen?')) return;
-  await sb.from('aanvragen').delete().eq('meeting_id',id);
-  await sb.from('meetings').delete().eq('id',id);
-  meetings = meetings.filter(m=>m.id!==id);
-  await laadAanvragen();
+function resetControles(){
+  gecontroleerd.clear();
   render();
 }
 
@@ -401,25 +356,16 @@ function navigeer(v){
 
 function render(){
   const el = document.getElementById('main');
-  if(view==='overzicht')      el.innerHTML = renderOverzicht();
-  else if(view==='nieuw')     el.innerHTML = renderNieuw();
-  else if(view==='werkplaats')el.innerHTML = renderWerkplaats();
-  else if(view==='vertrek')   el.innerHTML = renderVertrek();
-  else if(view==='meetings')  el.innerHTML = renderMeetings();
+  if(view==='overzicht')         el.innerHTML = renderOverzicht();
+  else if(view==='nieuw')        el.innerHTML = renderNieuw();
+  else if(view==='werkplaats')   el.innerHTML = renderWerkplaats();
+  else if(view==='vertrek')      el.innerHTML = renderVertrek();
   else if(view==='instellingen') el.innerHTML = renderInstellingen();
   updateNavActief();
   bindForms();
 }
 
 function renderOverzicht(){
-  const mtg = getMeeting();
-  if(!mtg) return `<div class="empty-state">
-    <div class="empty-icon">&#128197;</div>
-    <div class="empty-title">Geen actieve meeting</div>
-    <p style="margin-top:6px;font-size:13px">Maak eerst een meeting aan.</p>
-    ${rollen.has('admin')?`<div style="margin-top:16px"><button class="btn-blauw" onclick="navigeer('meetings')">Meeting aanmaken</button></div>`:''}
-  </div>`;
-
   const totaal = {};
   Object.keys(STATUS).forEach(k=>{ totaal[k]=0; });
   aanvragen.forEach(a=>{ if(a.status in totaal) totaal[a.status]++; });
@@ -468,7 +414,6 @@ function renderOverzicht(){
       <h1 class="page-title">&#128230; Materiaal</h1>
       <button class="btn-blauw" onclick="navigeer('nieuw')" style="margin-left:auto">+ Aanvragen</button>
     </div>
-    <div class="meeting-banner">&#128197; ${esc(mtg.naam)}${mtg.datum?` &mdash; ${fmtDatum(mtg.datum)}${mtg.datum_tot?' &mdash; '+fmtDatum(mtg.datum_tot):''}`:''}</div>
     ${statsHtml}
     ${truckHtml}`;
 }
@@ -568,12 +513,11 @@ function renderWerkplaats(){
 }
 
 function renderVertrek(){
-  const mtg = getMeeting();
-  if(!mtg) return `<div class="empty-state"><div class="empty-icon">&#128197;</div><div class="empty-title">Geen actieve meeting</div></div>`;
-
   const mee = aanvragen.filter(a=>a.status==='mee');
-  let html = `<div class="head-row"><h1 class="page-title">&#x1F69B; Vertrekcontrole</h1></div>
-    <div class="meeting-banner">&#128197; ${esc(mtg.naam)}</div>`;
+  let html = `<div class="head-row">
+    <h1 class="page-title">&#x1F69B; Vertrekcontrole</h1>
+    ${gecontroleerd.size>0?`<button class="btn-sm" onclick="resetControles()" style="margin-left:auto">Reset alles</button>`:''}
+  </div>`;
 
   if(!trucks.length){
     html += `<div class="empty-state"><div class="empty-title">Geen trucks geconfigureerd</div></div>`;
@@ -582,7 +526,7 @@ function renderVertrek(){
 
   trucks.forEach(t=>{
     const items = mee.filter(a=>a.truck_id===t.id);
-    const controle = vertrekControles.find(v=>v.meeting_id===mtg.id&&v.truck_id===t.id);
+    const isOk = gecontroleerd.has(t.id);
     html += `<div class="vertrek-truck">
       <div class="vertrek-truck-head">
         <span style="font-size:15px;font-weight:700">&#x1F69B; ${esc(t.naam)}</span>
@@ -593,10 +537,10 @@ function renderVertrek(){
           <div class="check-row">
             <span class="check-naam">${esc(a.onderdeel)}</span>
             <span class="check-qty">&times;${a.aantal||1}</span>
-          </div>`).join('') : `<div style="color:#9ca3af;font-size:13px;padding:6px 0">Geen onderdelen gepland voor deze truck.</div>`}
+          </div>`).join('') : `<div style="color:#9ca3af;font-size:13px;padding:6px 0">Geen onderdelen met status "Mee" voor deze truck.</div>`}
         <div style="margin-top:14px">
-          ${controle
-            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(controle.gecontroleerd_door)} &mdash; ${fmtDt(controle.gecontroleerd_op)}</span>`
+          ${isOk
+            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(gebruiker.email)}</span>`
             : `<button class="btn-groen" onclick="markeerTruckGecontroleerd('${t.id}')">&#10003; Truck gecontroleerd</button>`}
         </div>
       </div>
@@ -605,33 +549,6 @@ function renderVertrek(){
   return html;
 }
 
-function renderMeetings(){
-  return `<div class="head-row"><h1 class="page-title">&#128197; Meetings</h1></div>
-    <div class="form-card" style="margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Nieuwe meeting</div>
-      <form id="form-meeting">
-        <div class="form-grid" style="margin-bottom:14px">
-          <div class="field"><label class="field-label">Naam *</label><input class="inp" id="m-naam" placeholder="bv. ROK Genk R1" required></div>
-          <div class="field"><label class="field-label">Circuit</label><input class="inp" id="m-circuit" placeholder="bv. Karting Genk"></div>
-          <div class="field"><label class="field-label">Van</label><input class="inp" id="m-datum-van" type="date"></div>
-          <div class="field"><label class="field-label">Tot</label><input class="inp" id="m-datum-tot" type="date"></div>
-        </div>
-        <button class="btn-blauw" type="submit">Meeting toevoegen</button>
-      </form>
-    </div>
-    ${meetings.length ? meetings.map(m=>`
-      <div class="meeting-card ${m.actief?'actief':''}">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;color:#111827">${esc(m.naam)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:2px">${m.circuit?esc(m.circuit)+' &mdash; ':''}${m.datum?fmtDatum(m.datum)+(m.datum_tot?' &mdash; '+fmtDatum(m.datum_tot):''):'Geen datum'}</div>
-        </div>
-        ${m.actief
-          ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">Actief</span>`
-          : `<button class="btn-sm" onclick="setActieveMeeting('${m.id}')">Activeren</button>`}
-        <button class="del-btn" onclick="verwijderMeeting('${m.id}')" title="Verwijderen">&times;</button>
-      </div>`).join('')
-    : `<div class="empty-state"><div class="empty-title">Nog geen meetings</div></div>`}`;
-}
 
 function renderInstellingen(){
   const truckHtml = trucks.map(t=>`<div class="truck-card">
@@ -679,8 +596,6 @@ function renderInstellingen(){
 function bindForms(){
   const fa = document.getElementById('form-aanvraag');
   if(fa) fa.onsubmit = slaatAanvraagOp;
-  const fm = document.getElementById('form-meeting');
-  if(fm) fm.onsubmit = slaatMeetingOp;
   const ft = document.getElementById('form-truck');
   if(ft) ft.onsubmit = voegTruckToe;
   const fu = document.getElementById('form-user');
@@ -689,11 +604,9 @@ function bindForms(){
 
 // ── REALTIME ──────────────────────────────────────────────────────────────────
 function setupRealtime(){
-  const mtg = getMeeting();
-  if(!mtg) return;
   if(realtimeSub) sb.removeChannel(realtimeSub);
   realtimeSub = sb.channel('materiaal-rt')
-    .on('postgres_changes', {event:'*',schema:'public',table:'aanvragen',filter:`meeting_id=eq.${mtg.id}`}, async () => {
+    .on('postgres_changes', {event:'*',schema:'public',table:'aanvragen'}, async () => {
       await laadAanvragen();
       render();
     })
