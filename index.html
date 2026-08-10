@@ -242,6 +242,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
       <button class="nav-item" data-nav="carburatoren" onclick="window.location.href='carburators.html'">Carburatoren</button>
       <button class="nav-item" data-nav="revisies" onclick="window.location.href='revisie.html'">Revisies</button>
       <div class="nav-divider"></div>
+      <button class="nav-item" onclick="window.location.href='materiaal.html'">&#128230; Materiaal</button>
+      <div class="nav-divider"></div>
       <button class="nav-item" id="btn-logout" style="display:none" onclick="document.getElementById('nav-dropdown').classList.remove('open');doLogout()">Afmelden</button>
     </div>
   </div>
@@ -659,6 +661,9 @@ async function init() {
   // Controleer of gebruiker al ingelogd is
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
+    const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
+    const rol=new Set((rd||[]).map(r=>r.rol));
+    if(rd&&rd.length>0&&!rol.has('testbank')&&!rol.has('admin')){window.location.href='materiaal.html';return;}
     await loadAndShow();
   } else {
     showLogin();

@@ -118,6 +118,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
         <button class="nav-item" onclick="window.location.href='carburators.html'">Carburatoren</button>
         <button class="nav-item" onclick="window.location.href='revisie.html'">Revisies</button>
         <div class="nav-divider"></div>
+        <button class="nav-item" onclick="window.location.href='materiaal.html'">&#128230; Materiaal</button>
+        <div class="nav-divider"></div>
         <button class="nav-item" onclick="doLogout()">Afmelden</button>
       </div>
     </div>
@@ -750,6 +752,9 @@ async function init(){
   if(!sb){window.location.href='index.html';return;}
   const{data:{session}}=await sb.auth.getSession();
   if(!session){window.location.href='index.html';return;}
+  const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
+  const rol=new Set((rd||[]).map(r=>r.rol));
+  if(!rol.has('testbank')&&!rol.has('admin')){window.location.href=rol.has('materiaal')?'materiaal.html':'index.html';return;}
   document.getElementById('db-status').innerHTML='<span class="db-dot" style="background:#10b981"></span>Supabase';
   const[data]=await Promise.all([dbLoad(),dbMotorenLoad(),laadMotorRevisies()]);
   sessies=data||[];
