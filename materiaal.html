@@ -118,6 +118,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
     <span class="logo-name">ProDynoDFK</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+    <span id="header-naam" style="color:#9ca3af;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px"></span>
     <div class="nav-wrap">
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()">&#9776; <span style="font-size:13px;font-weight:700">Menu</span></button>
       <div class="nav-dropdown" id="nav-dropdown">
@@ -153,6 +154,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 <script>
 const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
+const SUPABASE_SERVICE_KEY = 'VULL_HIER_JE_SERVICE_ROLE_KEY_IN';
 
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmtDatum = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -177,14 +179,19 @@ const PRIO = {
 const PRIO_VOLGORDE = { urgent:0, hoog:1, normaal:2, laag:3 };
 
 let sb = null;
+let sbAdmin = null;
 let gebruiker = null;
+let gebruikerNaam = '';
+let namenCache = {};
 let rollen = new Set();
 let trucks = [];
 let aanvragen = [];
 let gebruikers = [];
+let profielen = [];
 let gecontroleerd = new Set();
 let view = 'overzicht';
 let statusFilter = 'alles';
+let bewerkEmail = null;
 let realtimeSub = null;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
@@ -224,7 +231,7 @@ function aanvraagKaart(a, toonTruck){
         <span class="badge-prio ${p.cls}">${p.label}</span>
         ${a.bestemming?`<span style="color:#1d4ed8;font-weight:600;font-size:12px">&#x1F4CD; ${esc(a.bestemming)}</span>`:''}
         ${toonTruck&&truck?`<span style="color:#6b7280">&#x1F69B; ${esc(truck.naam)}</span>`:''}
-        <span style="color:#9ca3af;font-size:11px">${esc(a.aangevraagd_door||'')}</span>
+        <span style="color:#9ca3af;font-size:11px">${esc(namenCache[a.aangevraagd_door] || a.aangevraagd_door||'')}</span>
       </div>
       ${a.opmerking?`<div class="aanvraag-opm">${esc(a.opmerking)}</div>`:''}
     </div>
@@ -249,8 +256,16 @@ async function laadAanvragen(){
 }
 
 async function laadGebruikers(){
-  const {data} = await sb.from('user_roles').select('*').order('user_email');
-  gebruikers = data || [];
+  const {data:rollen} = await sb.from('user_roles').select('*').order('user_email');
+  gebruikers = rollen || [];
+  const {data:prof} = await sb.from('profiles').select('*').order('email');
+  profielen = prof || [];
+  namenCache = {};
+  (rollen||[]).forEach(r=>{ if(r.naam) namenCache[r.user_email]=r.naam; });
+  (prof||[]).forEach(p=>{ if(p.naam) namenCache[p.email]=p.naam; });
+  gebruikerNaam = namenCache[gebruiker?.email] || gebruikerNaam;
+  const el = document.getElementById('header-naam');
+  if(el) el.textContent = gebruikerNaam || gebruiker?.email || '';
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -292,7 +307,7 @@ async function slaatAanvraagOp(e){
     truck_id, onderdeel, aantal, prioriteit, bestemming: bestemming||null,
     opmerking: opmerking||null,
     status: 'aangevraagd',
-    aangevraagd_door: gebruiker.email,
+    aangevraagd_door: gebruikerNaam || gebruiker.email,
     aangevraagd_op: new Date().toISOString(),
   }).select().single();
   if(error){ alert('Opslaan mislukt: '+error.message); return; }
@@ -330,12 +345,67 @@ async function verwijderTruck(id){
 async function voegRolToe(e){
   e.preventDefault();
   const email = e.target.querySelector('#u-email').value.trim().toLowerCase();
+  const naam = e.target.querySelector('#u-naam').value.trim();
   const rol = e.target.querySelector('#u-rol').value;
   if(!email||!rol) return;
-  const {data,error} = await sb.from('user_roles').upsert({user_email:email, rol}, {onConflict:'user_email,rol'}).select().single();
+  const {data,error} = await sb.from('user_roles').upsert({user_email:email, rol, naam:naam||null}, {onConflict:'user_email,rol'}).select().single();
   if(error){ alert('Fout: '+error.message); return; }
+  if(naam){
+    await sb.from('user_roles').update({naam}).eq('user_email', email);
+    namenCache[email] = naam;
+    if(gebruiker.email === email) gebruikerNaam = naam;
+  }
   if(data && !gebruikers.find(u=>u.id===data.id)) gebruikers.push(data);
+  await laadGebruikers();
   e.target.reset();
+  render();
+}
+
+async function maakAccountAan(e){
+  e.preventDefault();
+  const email = e.target.querySelector('#ac-email').value.trim().toLowerCase();
+  const naam = e.target.querySelector('#ac-naam').value.trim();
+  const wachtwoord = e.target.querySelector('#ac-wachtwoord').value;
+  if(!email||!wachtwoord) return;
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = 'Bezig…';
+  const {data,error} = await sbAdmin.auth.admin.createUser({email, password:wachtwoord, email_confirm:true});
+  btn.disabled = false; btn.textContent = '+ Account aanmaken';
+  if(error){ alert('Fout: '+error.message); return; }
+  if(naam) await sb.from('profiles').update({naam}).eq('email', email);
+  e.target.reset();
+  await laadGebruikers();
+  render();
+}
+
+async function slaatAccountBewerkingOp(e, email){
+  e.preventDefault();
+  const naam = e.target.querySelector('.bw-naam').value.trim();
+  const wachtwoord = e.target.querySelector('.bw-wachtwoord').value;
+  if(naam){
+    await sb.from('profiles').update({naam}).eq('email', email);
+    await sb.from('user_roles').update({naam}).eq('user_email', email);
+    namenCache[email] = naam;
+    if(gebruiker.email === email){ gebruikerNaam = naam; document.getElementById('header-naam').textContent = naam; }
+  }
+  if(wachtwoord){
+    const {data:u} = await sbAdmin.from('profiles').select('id').eq('email',email).single();
+    if(u?.id) await sbAdmin.auth.admin.updateUserById(u.id, {password: wachtwoord});
+  }
+  bewerkEmail = null;
+  await laadGebruikers();
+  render();
+}
+
+async function verwijderAccount(email){
+  if(!confirm(`Account van ${email} verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
+  const profiel = profielen.find(p=>p.email===email);
+  if(profiel?.id){
+    const {error} = await sbAdmin.auth.admin.deleteUser(profiel.id);
+    if(error){ alert('Fout: '+error.message); return; }
+  }
+  await sb.from('user_roles').delete().eq('user_email', email);
+  await laadGebruikers();
   render();
 }
 
@@ -540,7 +610,7 @@ function renderVertrek(){
           </div>`).join('') : `<div style="color:#9ca3af;font-size:13px;padding:6px 0">Geen onderdelen met status "Mee" voor deze truck.</div>`}
         <div style="margin-top:14px">
           ${isOk
-            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(gebruiker.email)}</span>`
+            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(gebruikerNaam || gebruiker.email)}</span>`
             : `<button class="btn-groen" onclick="markeerTruckGecontroleerd('${t.id}')">&#10003; Truck gecontroleerd</button>`}
         </div>
       </div>
@@ -556,15 +626,48 @@ function renderInstellingen(){
     <button class="del-btn" onclick="verwijderTruck('${t.id}')">&times;</button>
   </div>`).join('');
 
-  const grouped = {};
-  gebruikers.forEach(u=>{ if(!grouped[u.user_email]) grouped[u.user_email]=[]; grouped[u.user_email].push(u); });
-  const userHtml = Object.entries(grouped).map(([email,rls])=>`
-    <div class="user-row">
-      <span class="user-email">${esc(email)}</span>
+  // Alle profielen (auth-accounts) tonen, aangevuld met handmatig toegevoegde emails zonder profiel
+  const emailsMetProfiel = new Set(profielen.map(p=>p.email));
+  const extraEmails = [...new Set(gebruikers.map(u=>u.user_email))].filter(e=>!emailsMetProfiel.has(e));
+  const alleGebruikers = [
+    ...profielen.map(p=>({email:p.email, heeftAccount:true})),
+    ...extraEmails.map(e=>({email:e, heeftAccount:false})),
+  ];
+  const userHtml = alleGebruikers.map(({email, heeftAccount})=>{
+    const rls = gebruikers.filter(u=>u.user_email===email);
+    const naam = namenCache[email] || '';
+    const bezig = bewerkEmail === email;
+    if(bezig) return `<div class="user-row" style="flex-direction:column;align-items:stretch;gap:10px">
+      <form onsubmit="slaatAccountBewerkingOp(event,'${esc(email)}')" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="flex:1;min-width:220px">
+          <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${esc(email)}</div>
+          <input class="inp bw-naam" placeholder="Voornaam" value="${esc(naam)}" style="width:100%;margin-bottom:6px">
+          <input class="inp bw-wachtwoord" type="password" placeholder="Nieuw wachtwoord (optioneel)" style="width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn-blauw" type="submit">Opslaan</button>
+          <button class="btn-outline" type="button" onclick="bewerkEmail=null;render()">Annuleren</button>
+        </div>
+      </form>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
         ${rls.map(r=>`<span class="role-badge role-${r.rol}">${r.rol} <button class="del-btn" style="font-size:12px;padding:0 2px" onclick="verwijderRol('${r.id}')">&times;</button></span>`).join('')}
+        ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
       </div>
-    </div>`).join('');
+    </div>`;
+    return `<div class="user-row">
+      <div style="flex:1">
+        ${naam?`<span style="font-weight:600;font-size:14px">${esc(naam)}</span><br>`:''}
+        <span class="user-email" style="color:#6b7280;font-size:12px">${esc(email)}</span>
+        ${!heeftAccount?`<span style="color:#f59e0b;font-size:11px;margin-left:6px">&#9888; geen account</span>`:''}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+        ${rls.map(r=>`<span class="role-badge role-${r.rol}">${r.rol} <button class="del-btn" style="font-size:12px;padding:0 2px" onclick="verwijderRol('${r.id}')">&times;</button></span>`).join('')}
+        ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
+        <button class="btn-outline" style="font-size:12px;padding:3px 8px" onclick="bewerkEmail='${esc(email)}';render()">&#9998; Bewerken</button>
+        <button class="del-btn" style="font-size:13px;padding:3px 8px;border-radius:6px" onclick="verwijderAccount('${esc(email)}')" title="Account verwijderen">&times;</button>
+      </div>
+    </div>`;
+  }).join('');
 
   return `<div class="head-row"><h1 class="page-title">&#9881; Instellingen</h1></div>
 
@@ -577,9 +680,20 @@ function renderInstellingen(){
       ${truckHtml}
     </div>
 
+    <div class="section-label">Account aanmaken</div>
+    <div class="form-card" style="margin-bottom:20px">
+      <form id="form-account" style="display:flex;gap:10px;flex-wrap:wrap">
+        <input class="inp" id="ac-naam" placeholder="Voornaam" style="flex:1;min-width:130px">
+        <input class="inp" id="ac-email" type="email" placeholder="e-mailadres" required style="flex:2;min-width:180px">
+        <input class="inp" id="ac-wachtwoord" type="password" placeholder="Tijdelijk wachtwoord" required style="flex:1;min-width:160px">
+        <button class="btn-groen" type="submit" style="white-space:nowrap">+ Account aanmaken</button>
+      </form>
+    </div>
+
     <div class="section-label">Gebruikers &amp; Rollen</div>
     <div class="form-card">
-      <form id="form-user" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:${gebruikers.length?'16px':'0'}">
+      <form id="form-user" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:${alleGebruikers.length?'16px':'0'}">
+        <input class="inp" id="u-naam" placeholder="Voornaam" style="flex:1;min-width:130px">
         <input class="inp" id="u-email" type="email" placeholder="e-mailadres" required style="flex:2;min-width:180px">
         <select class="sel" id="u-rol" required style="flex:1;min-width:130px">
           <option value="">Rol kiezen...</option>
@@ -587,9 +701,9 @@ function renderInstellingen(){
           <option value="testbank">testbank</option>
           <option value="materiaal">materiaal</option>
         </select>
-        <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Toevoegen</button>
+        <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Rol toewijzen</button>
       </form>
-      ${gebruikers.length ? userHtml : `<div style="color:#9ca3af;font-size:13px;padding:8px 0">Nog geen gebruikers. Voeg het eerste e-mailadres toe.</div>`}
+      ${alleGebruikers.length ? userHtml : `<div style="color:#9ca3af;font-size:13px;padding:8px 0">Nog geen accounts gevonden.</div>`}
     </div>`;
 }
 
@@ -598,6 +712,8 @@ function bindForms(){
   if(fa) fa.onsubmit = slaatAanvraagOp;
   const ft = document.getElementById('form-truck');
   if(ft) ft.onsubmit = voegTruckToe;
+  const fac = document.getElementById('form-account');
+  if(fac) fac.onsubmit = maakAccountAan;
   const fu = document.getElementById('form-user');
   if(fu) fu.onsubmit = voegRolToe;
 }
@@ -617,13 +733,28 @@ function setupRealtime(){
 async function init(){
   try{
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sbAdmin = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {auth:{persistSession:false,autoRefreshToken:false}});
     const {data:{session}} = await sb.auth.getSession();
     if(!session){ window.location.href='index.html'; return; }
     gebruiker = session.user;
   }catch{ window.location.href='index.html'; return; }
 
-  const {data:rd} = await sb.from('user_roles').select('rol').eq('user_email', gebruiker.email);
-  (rd||[]).forEach(r=>rollen.add(r.rol));
+  const {data:rd} = await sb.from('user_roles').select('rol,naam').eq('user_email', gebruiker.email);
+  (rd||[]).forEach(r=>{
+    rollen.add(r.rol);
+    if(r.naam) gebruikerNaam = r.naam;
+  });
+
+  const {data:namen} = await sb.from('user_roles').select('user_email,naam').not('naam','is',null);
+  (namen||[]).forEach(r=>{ if(r.naam) namenCache[r.user_email]=r.naam; });
+
+  // ook naam uit profiles ophalen als die er is
+  if(!gebruikerNaam){
+    const {data:prf} = await sb.from('profiles').select('naam').eq('email', gebruiker.email).single();
+    if(prf?.naam) gebruikerNaam = prf.naam;
+  }
+  const headerNaam = document.getElementById('header-naam');
+  if(headerNaam) headerNaam.textContent = gebruikerNaam || gebruiker.email;
 
   if(!rollen.has('materiaal') && !rollen.has('admin')){
     if(rollen.has('testbank')){ window.location.href='index.html'; return; }
