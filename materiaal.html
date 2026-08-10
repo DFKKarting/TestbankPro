@@ -329,9 +329,10 @@ async function slaatMeetingOp(e){
   e.preventDefault();
   const naam = e.target.querySelector('#m-naam').value.trim();
   const circuit = e.target.querySelector('#m-circuit').value.trim();
-  const datum = e.target.querySelector('#m-datum').value;
+  const datum = e.target.querySelector('#m-datum-van').value;
+  const datum_tot = e.target.querySelector('#m-datum-tot').value;
   if(!naam) return;
-  const {data} = await sb.from('meetings').insert({naam, circuit:circuit||null, datum:datum||null, actief:false}).select().single();
+  const {data} = await sb.from('meetings').insert({naam, circuit:circuit||null, datum:datum||null, datum_tot:datum_tot||null, actief:false}).select().single();
   if(data) meetings.unshift(data);
   e.target.reset();
   render();
@@ -467,7 +468,7 @@ function renderOverzicht(){
       <h1 class="page-title">&#128230; Materiaal</h1>
       <button class="btn-blauw" onclick="navigeer('nieuw')" style="margin-left:auto">+ Aanvragen</button>
     </div>
-    <div class="meeting-banner">&#128197; ${esc(mtg.naam)}${mtg.datum?` &mdash; ${fmtDatum(mtg.datum)}`:''}</div>
+    <div class="meeting-banner">&#128197; ${esc(mtg.naam)}${mtg.datum?` &mdash; ${fmtDatum(mtg.datum)}${mtg.datum_tot?' &mdash; '+fmtDatum(mtg.datum_tot):''}`:''}</div>
     ${statsHtml}
     ${truckHtml}`;
 }
@@ -612,7 +613,8 @@ function renderMeetings(){
         <div class="form-grid" style="margin-bottom:14px">
           <div class="field"><label class="field-label">Naam *</label><input class="inp" id="m-naam" placeholder="bv. ROK Genk R1" required></div>
           <div class="field"><label class="field-label">Circuit</label><input class="inp" id="m-circuit" placeholder="bv. Karting Genk"></div>
-          <div class="field"><label class="field-label">Datum</label><input class="inp" id="m-datum" type="date"></div>
+          <div class="field"><label class="field-label">Van</label><input class="inp" id="m-datum-van" type="date"></div>
+          <div class="field"><label class="field-label">Tot</label><input class="inp" id="m-datum-tot" type="date"></div>
         </div>
         <button class="btn-blauw" type="submit">Meeting toevoegen</button>
       </form>
@@ -621,7 +623,7 @@ function renderMeetings(){
       <div class="meeting-card ${m.actief?'actief':''}">
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:700;color:#111827">${esc(m.naam)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:2px">${m.circuit?esc(m.circuit)+' &mdash; ':''} ${m.datum?fmtDatum(m.datum):'Geen datum'}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">${m.circuit?esc(m.circuit)+' &mdash; ':''}${m.datum?fmtDatum(m.datum)+(m.datum_tot?' &mdash; '+fmtDatum(m.datum_tot):''):'Geen datum'}</div>
         </div>
         ${m.actief
           ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">Actief</span>`
