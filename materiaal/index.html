@@ -128,20 +128,25 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
       <span class="logo-name">ProDynoDFK</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-      <span id="header-naam" style="color:#9ca3af;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px"></span>
-      <div class="nav-wrap" id="nav-testbank" style="display:none">
-        <button class="nav-toggle" onclick="toggleNav()">Testbank &#9660;</button>
-        <div class="nav-dropdown" id="nav-dropdown">
-          <div class="nav-header">Testbank</div>
-          <button class="nav-item" onclick="window.location.href='/'">Sessies</button>
-          <button class="nav-item" onclick="window.location.href='/motoren/'">Motoren</button>
-          <button class="nav-item" onclick="window.location.href='/klanten/'">Klanten</button>
-          <button class="nav-item" onclick="window.location.href='/analyse/'">Analyse</button>
-          <button class="nav-item" onclick="window.location.href='/revisie/'">Revisies</button>
-          <button class="nav-item" onclick="window.location.href='/carburators/'">Carburatoren</button>
+      <div class="nav-wrap">
+        <button class="nav-toggle" onclick="toggleNav()" style="display:flex;align-items:center;gap:6px">
+          <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="font-size:11px;opacity:.7">&#9660;</span>
+        </button>
+        <div class="nav-dropdown" id="nav-dropdown" style="right:0">
+          <div id="nav-testbank" style="display:none">
+            <div class="nav-header">Testbank</div>
+            <button class="nav-item" onclick="window.location.href='/'">Sessies</button>
+            <button class="nav-item" onclick="window.location.href='/motoren/'">Motoren</button>
+            <button class="nav-item" onclick="window.location.href='/klanten/'">Klanten</button>
+            <button class="nav-item" onclick="window.location.href='/analyse/'">Analyse</button>
+            <button class="nav-item" onclick="window.location.href='/revisie/'">Revisies</button>
+            <button class="nav-item" onclick="window.location.href='/carburators/'">Carburatoren</button>
+            <div class="nav-divider"></div>
+          </div>
+          <button class="nav-item" onclick="doLogout()">Afmelden</button>
         </div>
       </div>
-      <button class="nav-toggle" onclick="doLogout()" style="font-size:13px;font-weight:600;padding:7px 12px">Afmelden</button>
     </div>
   </div>
   <nav id="nav-tabs">
