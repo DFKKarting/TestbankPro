@@ -548,9 +548,12 @@ async function doLogin() {
   errEl.classList.remove('active');
   if (!email || !pass) { errEl.textContent = 'Vul e-mail en wachtwoord in.'; errEl.classList.add('active'); return; }
   btn.disabled = true; btn.textContent = 'Bezig...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  const { data: loginData, error } = await sb.auth.signInWithPassword({ email, password: pass });
   btn.disabled = false; btn.textContent = 'Inloggen';
   if (error) { errEl.textContent = 'Inloggen mislukt — controleer je gegevens.'; errEl.classList.add('active'); return; }
+  const {data:rd} = await sb.from('user_roles').select('rol').eq('user_email', loginData.user.email);
+  const rol = new Set((rd||[]).map(r=>r.rol));
+  if(!rol.has('testbank')&&!rol.has('admin')){ window.location.href='/materiaal/'; return; }
   await loadAndShow();
 }
 
