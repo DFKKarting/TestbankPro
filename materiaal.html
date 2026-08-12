@@ -350,24 +350,6 @@ async function verwijderTruck(id){
   render();
 }
 
-async function voegRolToe(e){
-  e.preventDefault();
-  const email = e.target.querySelector('#u-email').value.trim().toLowerCase();
-  const naam = e.target.querySelector('#u-naam').value.trim();
-  const rol = e.target.querySelector('#u-rol').value;
-  if(!email||!rol) return;
-  const {data,error} = await sb.from('user_roles').upsert({user_email:email, rol, naam:naam||null}, {onConflict:'user_email,rol'}).select().single();
-  if(error){ await toonMelding('Fout: '+error.message); return; }
-  if(naam){
-    await sb.from('user_roles').update({naam}).eq('user_email', email);
-    namenCache[email] = naam;
-    if(gebruiker.email === email) gebruikerNaam = naam;
-  }
-  if(data && !gebruikers.find(u=>u.id===data.id)) gebruikers.push(data);
-  await laadGebruikers();
-  e.target.reset();
-  render();
-}
 
 async function maakAccountAan(e){
   e.preventDefault();
@@ -729,17 +711,6 @@ function renderInstellingen(){
 
     <div class="section-label">Gebruikers &amp; Rollen</div>
     <div class="form-card">
-      <form id="form-user" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:${alleGebruikers.length?'16px':'0'}">
-        <input class="inp" id="u-naam" placeholder="Voornaam" style="flex:1;min-width:130px">
-        <input class="inp" id="u-email" type="email" placeholder="e-mailadres" required style="flex:2;min-width:180px">
-        <select class="sel" id="u-rol" required style="flex:1;min-width:130px">
-          <option value="">Rol kiezen...</option>
-          <option value="admin">admin</option>
-          <option value="testbank">testbank</option>
-          <option value="materiaal">materiaal</option>
-        </select>
-        <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Rol toewijzen</button>
-      </form>
       ${alleGebruikers.length ? userHtml : `<div style="color:#9ca3af;font-size:13px;padding:8px 0">Nog geen accounts gevonden.</div>`}
     </div>`;
 }
@@ -751,8 +722,6 @@ function bindForms(){
   if(ft) ft.onsubmit = voegTruckToe;
   const fac = document.getElementById('form-account');
   if(fac) fac.onsubmit = maakAccountAan;
-  const fu = document.getElementById('form-user');
-  if(fu) fu.onsubmit = voegRolToe;
 }
 
 // ── REALTIME ──────────────────────────────────────────────────────────────────

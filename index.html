@@ -663,7 +663,7 @@ async function init() {
   if (session) {
     const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
     const rol=new Set((rd||[]).map(r=>r.rol));
-    if(rd&&rd.length>0&&!rol.has('testbank')&&!rol.has('admin')){window.location.href='materiaal.html';return;}
+    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='materiaal.html';return;}
     await loadAndShow();
   } else {
     showLogin();
