@@ -148,10 +148,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
             <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
             <div class="nav-divider"></div>
           </div>
-          <div id="nav-beheer-wrap" style="display:none">
-            <button class="nav-item" onclick="navigeer('beheer');toggleNav()">&#9881; Beheer</button>
-            <div class="nav-divider"></div>
-          </div>
           <button class="nav-item" onclick="doLogout()">Afmelden</button>
         </div>
       </div>
@@ -160,6 +156,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   <nav id="nav-tabs">
     <button class="tab" id="nav-vandaag" onclick="navigeer('vandaag')">Vandaag</button>
     <button class="tab" id="nav-historiek" onclick="navigeer('historiek')">Historiek</button>
+    <button class="tab" id="nav-beheer" onclick="navigeer('beheer')" style="display:none">&#9881; Beheer</button>
   </nav>
 </header>
 
@@ -222,7 +219,7 @@ function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('
 document.addEventListener('click', e => { if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
 
 function updateNavActief(){
-  ['vandaag','historiek'].forEach(v => document.getElementById('nav-'+v)?.classList.toggle('active', view===v));
+  ['vandaag','historiek','beheer'].forEach(v => document.getElementById('nav-'+v)?.classList.toggle('active', view===v));
 }
 
 function navigeer(v, extra){
@@ -966,7 +963,7 @@ async function init(){
 
   if(rollen.has('admin')||rollen.has('dfk-engines')) document.getElementById('nav-engines-wrap').style.display='';
   if(rollen.has('admin')||rollen.has('dfk-logistics')) document.getElementById('nav-logistics-wrap').style.display='';
-  if(rollen.has('admin')) document.getElementById('nav-beheer-wrap').style.display='';
+  if(rollen.has('admin')) document.getElementById('nav-beheer').style.display='';
 
   await laadAlles();
   render();
