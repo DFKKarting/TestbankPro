@@ -173,7 +173,6 @@ const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
 
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const fmt = n => '&#8364;' + (+(n||0)).toFixed(2).replace('.',',');
 const fmtDatum = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '&#8212;';
 const fmtDatumLang = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : '&#8212;';
 const fmtDt = d => d ? new Date(d).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '&#8212;';
@@ -259,27 +258,6 @@ async function laadVerkoopDetail(id){
 }
 
 // ── BEREKENINGEN ──────────────────────────────────────────────────────────────
-function berekenTotalen(items){
-  let excl=0, btw=0;
-  items.forEach(i=>{ const b=i.aantal*(i.stukprijs||0); excl+=b; btw+=b*(i.btw_pct||21)/100; });
-  return { excl, btw, incl: excl+btw };
-}
-
-function btwGroepen(items){
-  const g={};
-  items.forEach(i=>{ const pct=i.btw_pct||21; const b=i.aantal*(i.stukprijs||0)*pct/100; g[pct]=(g[pct]||0)+b; });
-  return g;
-}
-
-async function updateVerkoopTotalen(verkoopId, localItems){
-  const items = localItems || huidigItems;
-  const t = berekenTotalen(items);
-  const rnd = x => Math.round(x*100)/100;
-  await sb.from('verkopen').update({totaal_excl:rnd(t.excl),totaal_btw:rnd(t.btw),totaal_incl:rnd(t.incl),updated_at:new Date().toISOString()}).eq('id',verkoopId);
-  const idx = verkopen.findIndex(v=>v.id===verkoopId);
-  if(idx>=0){ verkopen[idx].totaal_excl=rnd(t.excl); verkopen[idx].totaal_btw=rnd(t.btw); verkopen[idx].totaal_incl=rnd(t.incl); }
-}
-
 async function logActie(verkoopId, actie, details){
   const entry = {verkoop_id:verkoopId, actie, details:details||null, door:gebruikerNaam||gebruiker.email};
   await sb.from('verkoop_log').insert(entry);
@@ -308,7 +286,6 @@ async function maakNieuweVerkoop(e){
     circuit_id:circuitId||null, circuit_naam:circuitNaam||null,
     datum, referentie:ref, status:'open',
     aangemaakt_door:gebruikerNaam||gebruiker.email,
-    totaal_excl:0, totaal_btw:0, totaal_incl:0,
   }).select().single();
   if(error){ await toonMelding('Fout: '+error.message); return; }
 
@@ -331,8 +308,6 @@ async function voegItemToe(e){
   const naam = (acProductSel?.naam || f.querySelector('#i-naam-inp').value).trim();
   if(!naam){ await toonMelding('Voer een productnaam in.'); return; }
   const aantal = Math.max(1,parseInt(f.querySelector('#i-aantal').value)||1);
-  const stukprijs = acProductSel ? (acProductSel.verkoopprijs||0) : (parseFloat(f.querySelector('#i-prijs')?.value)||0);
-  const btwPct = acProductSel ? (acProductSel.btw_pct||21) : 21;
 
   const {data,error} = await sb.from('verkoop_items').insert({
     verkoop_id:huidigVerkoopId,
@@ -340,22 +315,18 @@ async function voegItemToe(e){
     product_naam:naam,
     artikelnummer:acProductSel?.artikelnummer||null,
     categorie:acProductSel?.categorie||null,
-    aantal, stukprijs, btw_pct:btwPct,
-    totaal:Math.round(aantal*stukprijs*100)/100,
+    aantal,
     toegevoegd_door:gebruikerNaam||gebruiker.email,
   }).select().single();
   if(error){ await toonMelding('Fout: '+error.message); return; }
 
   huidigItems.push(data);
-  await updateVerkoopTotalen(huidigVerkoopId);
-  await logActie(huidigVerkoopId,'product toegevoegd',`${aantal}× ${naam} @ €${stukprijs.toFixed(2)}`);
+  await logActie(huidigVerkoopId,'product toegevoegd',`${aantal}× ${naam}`);
 
   acProductSel=null;
   f.querySelector('#i-naam-inp').value='';
   f.querySelector('#i-aantal').value='1';
-  const pi = f.querySelector('#i-prijs'); if(pi) pi.value='';
   document.getElementById('ac-product-drop').style.display='none';
-  document.getElementById('i-prijs-wrap').style.display='none';
   render();
   setTimeout(()=>document.getElementById('i-naam-inp')?.focus(),50);
 }
@@ -366,7 +337,6 @@ async function verwijderItem(id){
   const {error} = await sb.from('verkoop_items').delete().eq('id',id);
   if(error){ await toonMelding('Fout: '+error.message); return; }
   huidigItems = huidigItems.filter(i=>i.id!==id);
-  await updateVerkoopTotalen(huidigVerkoopId);
   if(item) await logActie(huidigVerkoopId,'product verwijderd',`${item.aantal}× ${item.product_naam}`);
   render();
 }
@@ -447,7 +417,7 @@ function filterProducten(q){
   drop.innerHTML = hits.map(p=>`
     <div class="ac-item" onclick="selectProduct('${p.id}')">
       <div><div style="font-weight:600">${esc(p.naam)}</div>${p.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${esc(p.artikelnummer)}</div>`:''}</div>
-      <span class="ac-sub">${fmt(p.verkoopprijs||0)} excl.</span>
+      ${p.categorie?`<span class="ac-sub">${esc(p.categorie)}</span>`:''}
     </div>`).join('') +
     `<div class="ac-nieuw" onclick="selectVrijProduct(document.getElementById('i-naam-inp').value)">&#43; Vrij product (geen catalogus)</div>`;
   drop.style.display='block';
@@ -469,8 +439,7 @@ function selectVrijProduct(naam){
   const el = document.getElementById('i-naam-inp');
   if(el) el.value=naam.trim();
   document.getElementById('ac-product-drop').style.display='none';
-  document.getElementById('i-prijs-wrap').style.display='flex';
-  setTimeout(()=>document.getElementById('i-prijs')?.focus(),30);
+  setTimeout(()=>{ const a=document.getElementById('i-aantal'); if(a){a.focus();a.select();} },30);
 }
 
 document.addEventListener('click', e=>{
@@ -510,8 +479,7 @@ function verkoopKaartHtml(v){
       </div>
     </div>
     <div style="text-align:right;flex-shrink:0">
-      <div class="vk-totaal">${fmt(v.totaal_incl)}</div>
-      <div class="vk-nr">#${esc(v.nummer)}</div>
+      <div class="vk-nr" style="font-size:12px;color:#6b7280">#${esc(v.nummer)}</div>
     </div>
   </div>`;
 }
@@ -525,7 +493,6 @@ function renderVandaag(){
   ) : vandaag;
   const aantalOpen = vandaag.filter(v=>v.status==='open').length;
   const aantalKlaar = vandaag.filter(v=>v.status==='klaar').length;
-  const omzetIncl = vandaag.reduce((s,v)=>s+(v.totaal_incl||0),0);
   const circuitOpts = circuits.map(c=>`<option value="${c.id}"${c.id===dagCircuitId?' selected':''}>${esc(c.naam)}</option>`).join('');
 
   return `
@@ -547,7 +514,6 @@ function renderVandaag(){
     <div class="stat-card"><div class="stat-val">${vandaag.length}</div><div class="stat-lbl">Verkopen</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${aantalOpen}</div><div class="stat-lbl">Open</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#10b981">${aantalKlaar}</div><div class="stat-lbl">Klaar</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#1d4ed8;font-size:18px">${fmt(omzetIncl)}</div><div class="stat-lbl">Omzet incl. BTW</div></div>
   </div>
 
   ${vandaag.length > 0 ? `<div class="zoek-bar">
@@ -626,8 +592,6 @@ function renderDetail(){
   const v = verkopen.find(x=>x.id===huidigVerkoopId);
   if(!v) return renderVandaag();
   const isOpen = v.status==='open';
-  const t = berekenTotalen(huidigItems);
-  const groepen = btwGroepen(huidigItems);
 
   const itemRijen = huidigItems.length === 0 ?
     `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:28px;font-size:13px">Nog geen producten — voeg het eerste product toe hierboven</td></tr>` :
@@ -637,8 +601,6 @@ function renderDetail(){
         ${i.categorie||i.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${[i.categorie,i.artikelnummer].filter(Boolean).map(esc).join(' · ')}</div>`:''}
       </td>
       <td style="text-align:center;font-weight:600">${i.aantal}</td>
-      <td style="text-align:right">${fmt(i.stukprijs)}</td>
-      <td style="text-align:right;font-weight:700">${fmt(i.aantal*(i.stukprijs||0))}</td>
       <td style="text-align:right;white-space:nowrap">
         ${isOpen?`<button class="del-btn" onclick="verwijderItem('${i.id}')" title="Verwijderen">&times;</button>`:''}
       </td>
@@ -685,10 +647,6 @@ function renderDetail(){
           <label class="field-label">Aantal</label>
           <input class="inp" id="i-aantal" type="number" min="1" value="1" style="text-align:center;font-size:16px;font-weight:700">
         </div>
-        <div class="field" id="i-prijs-wrap" style="display:none;flex:0 0 120px">
-          <label class="field-label">Prijs excl. BTW</label>
-          <input class="inp" id="i-prijs" type="number" min="0" step="0.01" placeholder="0,00">
-        </div>
         <button class="btn-blauw" type="submit" style="flex-shrink:0;align-self:flex-end;padding:9px 20px">&#43; Toevoegen</button>
       </div>
     </form>
@@ -701,17 +659,10 @@ function renderDetail(){
         <thead><tr>
           <th>Product</th>
           <th style="text-align:center">Aantal</th>
-          <th style="text-align:right">Prijs excl.</th>
-          <th style="text-align:right">Totaal excl.</th>
           <th style="width:32px"></th>
         </tr></thead>
         <tbody>${itemRijen}</tbody>
       </table>
-    </div>
-    <div class="totalen">
-      <div class="totaal-row"><span>Subtotaal excl. BTW</span><span>${fmt(t.excl)}</span></div>
-      ${btwHtml}
-      <div class="totaal-row eindtotaal"><span>Totaal incl. BTW</span><span>${fmt(t.incl)}</span></div>
     </div>
   </div>
 
@@ -734,8 +685,6 @@ function renderHistoriek(){
   if(histFilter.circuit) lijst = lijst.filter(v=>v.circuit_id===histFilter.circuit);
   if(histFilter.klant) lijst = lijst.filter(v=>v.klant_naam.toLowerCase().includes(histFilter.klant.toLowerCase()));
   if(histFilter.status) lijst = lijst.filter(v=>v.status===histFilter.status);
-
-  const omzet = lijst.reduce((s,v)=>s+(v.totaal_incl||0),0);
 
   return `
   <div class="head-row">
@@ -782,22 +731,19 @@ function renderHistoriek(){
     <div style="overflow-x:auto">
       <table class="items-tbl">
         <thead><tr>
-          <th>Nummer</th><th>Klant</th><th>Circuit</th><th>Datum</th>
-          <th style="text-align:right">Totaal incl.</th><th>Status</th>
+          <th>Nummer</th><th>Klant</th><th>Circuit</th><th>Datum</th><th>Status</th>
         </tr></thead>
         <tbody>${lijst.map(v=>`<tr style="cursor:pointer" onclick="openVerkoop('${v.id}')">
           <td style="font-weight:700;color:#2563eb">#${esc(v.nummer)}</td>
           <td style="font-weight:600">${esc(v.klant_naam)}</td>
           <td>${v.circuit_naam?`<span class="circuit-badge">${esc(v.circuit_naam)}</span>`:''}</td>
           <td>${fmtDatum(v.datum)}</td>
-          <td style="text-align:right;font-weight:700">${fmt(v.totaal_incl)}</td>
           <td>${statusBadge(v.status)}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;justify-content:space-between;font-size:13px;color:#6b7280">
-      <span>${lijst.length} verkopen</span>
-      <span>Totaal incl. BTW: <strong style="color:#111827">${fmt(omzet)}</strong></span>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6;font-size:13px;color:#6b7280">
+      ${lijst.length} verkopen
     </div>
   </div>`}`;
 }
@@ -833,16 +779,6 @@ function renderBeheerProducten(){
           <label class="field-label">Categorie</label>
           <select class="sel" id="p-cat">${catOpts}</select>
         </div>
-        <div class="field">
-          <label class="field-label">Verkoopprijs excl. BTW (&#8364;)</label>
-          <input class="inp" id="p-prijs" type="number" min="0" step="0.01" placeholder="0,00">
-        </div>
-        <div class="field">
-          <label class="field-label">BTW percentage</label>
-          <select class="sel" id="p-btw">
-            <option value="21">21%</option><option value="6">6%</option><option value="0">0%</option>
-          </select>
-        </div>
       </div>
       <button class="btn-blauw" type="submit">&#43; Product toevoegen</button>
     </form>
@@ -851,13 +787,11 @@ function renderBeheerProducten(){
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Catalogus (${producten.length})</div>
     <div style="overflow-x:auto">
       <table class="items-tbl">
-        <thead><tr><th>Naam</th><th>Art.nr.</th><th>Categorie</th><th style="text-align:right">Prijs excl.</th><th style="text-align:right">BTW</th><th></th></tr></thead>
+        <thead><tr><th>Naam</th><th>Art.nr.</th><th>Categorie</th><th></th></tr></thead>
         <tbody>${producten.map(p=>`<tr>
           <td style="font-weight:600">${esc(p.naam)}</td>
           <td style="color:#6b7280">${esc(p.artikelnummer||'')}</td>
           <td><span style="background:#e5e7eb;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600">${esc(p.categorie||'')}</span></td>
-          <td style="text-align:right;font-weight:700">${fmt(p.verkoopprijs||0)}</td>
-          <td style="text-align:right;color:#6b7280">${p.btw_pct||21}%</td>
           <td><button class="del-btn" onclick="verwijderProduct('${p.id}')">&times;</button></td>
         </tr>`).join('')}</tbody>
       </table>
@@ -914,7 +848,7 @@ function renderBeheerKlanten(){
 async function voegProductToe(e){
   e.preventDefault(); const f=e.target;
   const naam=f.querySelector('#p-naam').value.trim();
-  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,categorie:f.querySelector('#p-cat').value,verkoopprijs:parseFloat(f.querySelector('#p-prijs').value)||0,btw_pct:parseFloat(f.querySelector('#p-btw').value)||21,actief:true}).select().single();
+  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,categorie:f.querySelector('#p-cat').value,actief:true}).select().single();
   if(error){await toonMelding('Fout: '+error.message);return;}
   producten.push(data); producten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
 }
