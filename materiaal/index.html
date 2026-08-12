@@ -328,6 +328,11 @@ function markeerTruckGecontroleerd(truckId){
   render();
 }
 
+function maakControleOngedaan(truckId){
+  gecontroleerd.delete(truckId);
+  render();
+}
+
 function resetControles(){
   gecontroleerd.clear();
   render();
@@ -597,17 +602,23 @@ function renderWerkplaats(){
 
 function renderVertrek(){
   const mee = aanvragen.filter(a=>a.status==='mee');
+  const trucksMetItems = trucks.filter(t=>mee.some(a=>a.truck_id===t.id));
+
   let html = `<div class="head-row">
     <h1 class="page-title">&#x1F69B; Vertrekcontrole</h1>
     ${gecontroleerd.size>0?`<button class="btn-sm" onclick="resetControles()" style="margin-left:auto">Reset alles</button>`:''}
   </div>`;
 
-  if(!trucks.length){
-    html += `<div class="empty-state"><div class="empty-title">Geen trucks geconfigureerd</div></div>`;
+  if(!trucksMetItems.length){
+    html += `<div class="empty-state">
+      <div class="empty-icon">&#x2705;</div>
+      <div class="empty-title">Niets te controleren</div>
+      <p style="margin-top:6px;font-size:13px">Er zijn geen onderdelen met status "Mee" voor enige truck.</p>
+    </div>`;
     return html;
   }
 
-  trucks.forEach(t=>{
+  trucksMetItems.forEach(t=>{
     const items = mee.filter(a=>a.truck_id===t.id);
     const isOk = gecontroleerd.has(t.id);
     html += `<div class="vertrek-truck">
@@ -616,14 +627,15 @@ function renderVertrek(){
         <span style="font-size:13px;color:#93c5fd">${items.length} onderdelen</span>
       </div>
       <div class="vertrek-truck-body">
-        ${items.length ? items.map(a=>`
+        ${items.map(a=>`
           <div class="check-row">
             <span class="check-naam">${esc(a.onderdeel)}</span>
             <span class="check-qty">&times;${a.aantal||1}</span>
-          </div>`).join('') : `<div style="color:#9ca3af;font-size:13px;padding:6px 0">Geen onderdelen met status "Mee" voor deze truck.</div>`}
-        <div style="margin-top:14px">
+          </div>`).join('')}
+        <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
           ${isOk
-            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(gebruikerNaam || gebruiker.email)}</span>`
+            ? `<span class="gecontroleerd-badge">&#10003; Gecontroleerd door ${esc(gebruikerNaam || gebruiker.email)}</span>
+               <button class="btn-sm" onclick="maakControleOngedaan('${t.id}')" style="color:#ef4444;border-color:#ef4444">&#x21A9; Ongedaan</button>`
             : `<button class="btn-groen" onclick="markeerTruckGecontroleerd('${t.id}')">&#10003; Truck gecontroleerd</button>`}
         </div>
       </div>
