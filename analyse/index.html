@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="logos/dfk-enginges-icon.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" href="/logos/dfk-enginges-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ProDynoDFK">
@@ -234,20 +234,20 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()">&#9776; <span class="btn-lbl" style="font-size:13px">Menu</span></button>
       <div class="nav-dropdown" id="nav-dropdown">
         <div class="nav-header">Navigatie</div>
-        <button class="nav-item" onclick="window.location.href='index.html'">Sessies</button>
-        <button class="nav-item" onclick="window.location.href='motoren.html'">Motoren</button>
-        <button class="nav-item" onclick="window.location.href='klanten.html'">Klanten</button>
-        <button class="nav-item active" onclick="window.location.href='analyse.html'">Analyse</button>
-        <button class="nav-item" onclick="window.location.href='carburators.html'">Carburatoren</button>
-        <button class="nav-item" onclick="window.location.href='revisie.html'">Revisies</button>
+        <button class="nav-item" onclick="window.location.href='/'">Sessies</button>
+        <button class="nav-item" onclick="window.location.href='/motoren/'">Motoren</button>
+        <button class="nav-item" onclick="window.location.href='/klanten/'">Klanten</button>
+        <button class="nav-item active" onclick="window.location.href='/analyse/'">Analyse</button>
+        <button class="nav-item" onclick="window.location.href='/carburators/'">Carburatoren</button>
+        <button class="nav-item" onclick="window.location.href='/revisie/'">Revisies</button>
         <div class="nav-divider"></div>
-        <button class="nav-item" onclick="window.location.href='materiaal.html'">&#128230; Materiaal</button>
+        <button class="nav-item" onclick="window.location.href='/materiaal/'">&#128230; Materiaal</button>
         <div class="nav-divider"></div>
         <button class="nav-item" onclick="doLogout()">Afmelden</button>
       </div>
     </div>
   </div>
-  <div class="logo" onclick="window.location.href='index.html'">
+  <div class="logo" onclick="window.location.href='/'">
     <img src="logos/dfk-engines-transp.png" style="height:52px;object-fit:contain;display:block">
     <span class="logo-name">ProDynoDFK</span>
   </div>
@@ -442,7 +442,7 @@ async function doLogin(){
 async function doLogout(){
   document.getElementById('nav-dropdown')?.classList.remove('open');
   if(sb) await sb.auth.signOut();
-  window.location.href='index.html';
+  window.location.href='/';
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('login-screen').classList.contains('active')) doLogin();
@@ -1341,7 +1341,7 @@ async function laadEnToon(){
 
 async function init(){
   try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){sb=null;}
-  if(!sb){window.location.href='index.html';return;}
+  if(!sb){window.location.href='/';return;}
   const{data:{session}}=await sb.auth.getSession();
   if(!session){
     document.getElementById('login-screen').classList.add('active');

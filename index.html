@@ -6,9 +6,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="logos/dfk-enginges-icon.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" href="/logos/dfk-enginges-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ProDynoDFK">
@@ -236,13 +236,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
     <div class="nav-dropdown" id="nav-dropdown">
       <div class="nav-header">Navigatie</div>
       <button class="nav-item" data-nav="lijst" onclick="navigeerNav('lijst')">Sessies</button>
-      <button class="nav-item" data-nav="motoren" onclick="localStorage.removeItem('tbp_motoren_view');window.location.href='motoren.html'">Motoren</button>
-      <button class="nav-item" data-nav="klanten" onclick="localStorage.removeItem('tbp_klanten_view');window.location.href='klanten.html'">Klanten</button>
-      <button class="nav-item" data-nav="analyse" onclick="window.location.href='analyse.html'">Analyse</button>
-      <button class="nav-item" data-nav="carburatoren" onclick="window.location.href='carburators.html'">Carburatoren</button>
-      <button class="nav-item" data-nav="revisies" onclick="window.location.href='revisie.html'">Revisies</button>
+      <button class="nav-item" data-nav="motoren" onclick="localStorage.removeItem('tbp_motoren_view');window.location.href='/motoren/'">Motoren</button>
+      <button class="nav-item" data-nav="klanten" onclick="localStorage.removeItem('tbp_klanten_view');window.location.href='/klanten/'">Klanten</button>
+      <button class="nav-item" data-nav="analyse" onclick="window.location.href='/analyse/'">Analyse</button>
+      <button class="nav-item" data-nav="carburatoren" onclick="window.location.href='/carburators/'">Carburatoren</button>
+      <button class="nav-item" data-nav="revisies" onclick="window.location.href='/revisie/'">Revisies</button>
       <div class="nav-divider"></div>
-      <button class="nav-item" onclick="window.location.href='materiaal.html'">&#128230; Materiaal</button>
+      <button class="nav-item" onclick="window.location.href='/materiaal/'">&#128230; Materiaal</button>
       <div class="nav-divider"></div>
       <button class="nav-item" id="btn-logout" style="display:none" onclick="document.getElementById('nav-dropdown').classList.remove('open');doLogout()">Afmelden</button>
     </div>
@@ -619,7 +619,7 @@ async function loadAndShow() {
   const navTarget = localStorage.getItem('tbp_nav_target');
   if (openMotor) {
     // Motor wordt nu afgehandeld door motoren.html
-    window.location.href = 'motoren.html';
+    window.location.href='/motoren/';
     return;
   } else if (openSessie) {
     localStorage.removeItem('tbp_open_sessie');
@@ -636,7 +636,7 @@ async function loadAndShow() {
     }
   } else if (navTarget) {
     localStorage.removeItem('tbp_nav_target');
-    if (navTarget === 'motoren') { localStorage.removeItem('tbp_motoren_view'); window.location.href = 'motoren.html'; return; }
+    if (navTarget === 'motoren') { localStorage.removeItem('tbp_motoren_view'); window.location.href='/motoren/'; return; }
     else if (navTarget === 'sessies') view = 'lijst';
   } else {
     const navType = performance.getEntriesByType('navigation')[0]?.type;
@@ -663,7 +663,7 @@ async function init() {
   if (session) {
     const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
     const rol=new Set((rd||[]).map(r=>r.rol));
-    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='materiaal.html';return;}
+    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='/materiaal/';return;}
     await loadAndShow();
   } else {
     showLogin();
@@ -1273,8 +1273,8 @@ function render(){
   if(view==='lijst') renderLijst();
   else if(view==='nieuw') renderNieuw();
   else if(view==='detail') renderDetail();
-  else if(view==='klanten'||view==='klant-detail') { window.location.href='klanten.html'; return; }
-  else if(view==='motoren'||view==='motor-detail'||view==='motor-nieuw') { window.location.href='motoren.html'; return; }
+  else if(view==='klanten'||view==='klant-detail') { window.location.href='/klanten/'; return; }
+  else if(view==='motoren'||view==='motor-detail'||view==='motor-nieuw') { window.location.href='/motoren/'; return; }
   updateNavActive();
 }
 
@@ -2099,13 +2099,13 @@ document.getElementById('main').addEventListener('click', async e=>{
   const {action,id,runId}=el.dataset;
   if(action==='bekijk'){const s=sessies.find(x=>x.id==id);if(s) navigeer('detail',s);}
   else if(action==='naar-lijst') {
-    if(cameFromKlanten){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromKlanten=false;saveViewState();window.location.href='klanten.html';}
-    else if(cameFromMotoren){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromMotoren=false;saveViewState();if(sessionOriginMotorNr)localStorage.setItem('tbp_open_motor',sessionOriginMotorNr);sessionOriginMotorNr='';window.location.href='motoren.html';}
+    if(cameFromKlanten){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromKlanten=false;saveViewState();window.location.href='/klanten/';}
+    else if(cameFromMotoren){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromMotoren=false;saveViewState();if(sessionOriginMotorNr)localStorage.setItem('tbp_open_motor',sessionOriginMotorNr);sessionOriginMotorNr='';window.location.href='/motoren/';}
     else{stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;localStorage.removeItem('tbp_active_sessie');lijstOpen=true;navigeer('lijst');}
   }
   else if(action==='naar-motor') {
-    if(cameFromKlanten){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromKlanten=false;saveViewState();window.location.href='klanten.html';}
-    else if(cameFromMotoren){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromMotoren=false;saveViewState();if(sessionOriginMotorNr)localStorage.setItem('tbp_open_motor',sessionOriginMotorNr);sessionOriginMotorNr='';window.location.href='motoren.html';}
+    if(cameFromKlanten){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromKlanten=false;saveViewState();window.location.href='/klanten/';}
+    else if(cameFromMotoren){await slaTimerDuurOp();stopSessieTimer();sessieStartTijd=null;sessieTimerSessieId=null;cameFromMotoren=false;saveViewState();if(sessionOriginMotorNr)localStorage.setItem('tbp_open_motor',sessionOriginMotorNr);sessionOriginMotorNr='';window.location.href='/motoren/';}
     else{if(!sessieTimerSessieId){stopSessieTimer();sessieStartTijd=null;}navigeer('lijst');}
   }
   else if(action==='opslaan') opslaan();
