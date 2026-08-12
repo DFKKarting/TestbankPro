@@ -250,7 +250,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
         </button>
         <div class="nav-dropdown" id="nav-dropdown" style="right:0">
           <div id="nav-materiaal" style="display:none">
-            <button class="nav-item" onclick="window.location.href='/materiaal/'">Materiaal</button>
+            <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">Materiaal</button>
             <div class="nav-divider"></div>
           </div>
           <button class="nav-item" onclick="doLogout()">Afmelden</button>
@@ -564,7 +564,7 @@ async function doLogin() {
   if (error) { errEl.textContent = 'Inloggen mislukt — controleer je gegevens.'; errEl.classList.add('active'); return; }
   const {data:rd} = await sb.from('user_roles').select('rol').eq('user_email', loginData.user.email);
   const rol = new Set((rd||[]).map(r=>r.rol));
-  if(!rol.has('testbank')&&!rol.has('admin')){ window.location.href='/materiaal/'; return; }
+  if(!rol.has('testbank')&&!rol.has('admin')){ window.location.href='/dfk-logistics/'; return; }
   await loadAndShow();
 }
 
@@ -691,7 +691,7 @@ async function init() {
   if (session) {
     const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
     const rol=new Set((rd||[]).map(r=>r.rol));
-    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='/materiaal/';return;}
+    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='/dfk-logistics/';return;}
     await loadAndShow();
   } else {
     showLogin();
