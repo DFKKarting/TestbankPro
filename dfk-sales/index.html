@@ -384,7 +384,7 @@ function acEnter(e, dropId){
   const drop = document.getElementById(dropId);
   if(!drop || drop.style.display === 'none') return;
   e.preventDefault();
-  drop.querySelector('.ac-item')?.click();
+  (drop.querySelector('.ac-item') || drop.querySelector('.ac-nieuw'))?.click();
 }
 
 function filterKlanten(q){
