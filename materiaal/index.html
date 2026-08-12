@@ -139,6 +139,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
             <button class="nav-item" onclick="window.location.href='/'">Testbank</button>
             <div class="nav-divider"></div>
           </div>
+          <div id="nav-instellingen-wrap" style="display:none">
+            <button class="nav-item" onclick="navigeer('instellingen');toggleNav()">&#9881; Beheer</button>
+            <div class="nav-divider"></div>
+          </div>
           <button class="nav-item" onclick="doLogout()">Afmelden</button>
         </div>
       </div>
@@ -148,7 +152,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
     <button class="tab" id="nav-overzicht" onclick="navigeer('overzicht')">Overzicht</button>
     <button class="tab" id="nav-werkplaats" onclick="navigeer('werkplaats')">Werkplaats</button>
     <button class="tab" id="nav-vertrek" onclick="navigeer('vertrek')">Controle</button>
-    <button class="tab" id="nav-instellingen" style="display:none" onclick="navigeer('instellingen')">&#9881; Beheer</button>
   </nav>
 </header>
 
@@ -825,7 +828,7 @@ async function init(){
     return;
   }
 
-  if(rollen.has('admin')) document.getElementById('nav-instellingen').style.display='';
+  if(rollen.has('admin')) document.getElementById('nav-instellingen-wrap').style.display='';
   if(rollen.has('admin')||rollen.has('testbank')) document.getElementById('nav-testbank').style.display='';
 
   await Promise.all([
