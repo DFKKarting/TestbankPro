@@ -95,6 +95,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .role-testbank{background:#dbeafe;color:#1e40af}
 .role-materiaal{background:#d1fae5;color:#065f46}
 .del-btn{background:none;border:none;cursor:pointer;color:#ef4444;font-size:15px;padding:2px 5px;border-radius:4px;font-family:inherit;line-height:1}
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
+#modal-box{background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#modal-tekst{font-size:15px;color:#111827;line-height:1.5;margin-bottom:20px;white-space:pre-wrap}
+#modal-knoppen{display:flex;gap:10px;justify-content:flex-end}
 .del-btn:hover{background:#fee2e2}
 .truck-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:7px;padding:11px 14px;display:flex;align-items:center;gap:10px}
 .truck-naam{font-size:14px;font-weight:700;color:#111827;flex:1}
@@ -291,7 +295,7 @@ async function wijzigStatus(id, nieuwStatus){
 }
 
 async function verwijderAanvraag(id){
-  if(!confirm('Aanvraag verwijderen?')) return;
+  if(!await toonBevestiging('Aanvraag verwijderen?')) return;
   await sb.from('aanvragen').delete().eq('id',id);
   aanvragen = aanvragen.filter(a=>a.id!==id);
   render();
@@ -314,7 +318,7 @@ async function slaatAanvraagOp(e){
     aangevraagd_door: gebruikerNaam || gebruiker.email,
     aangevraagd_op: new Date().toISOString(),
   }).select().single();
-  if(error){ alert('Opslaan mislukt: '+error.message); return; }
+  if(error){ await toonMelding('Opslaan mislukt: '+error.message); return; }
   if(data) aanvragen.unshift(data);
   navigeer('overzicht');
 }
@@ -340,7 +344,7 @@ async function voegTruckToe(e){
 }
 
 async function verwijderTruck(id){
-  if(!confirm('Truck verwijderen?')) return;
+  if(!await toonBevestiging('Truck verwijderen?')) return;
   await sb.from('trucks').update({actief:false}).eq('id',id);
   trucks = trucks.filter(t=>t.id!==id);
   render();
@@ -353,7 +357,7 @@ async function voegRolToe(e){
   const rol = e.target.querySelector('#u-rol').value;
   if(!email||!rol) return;
   const {data,error} = await sb.from('user_roles').upsert({user_email:email, rol, naam:naam||null}, {onConflict:'user_email,rol'}).select().single();
-  if(error){ alert('Fout: '+error.message); return; }
+  if(error){ await toonMelding('Fout: '+error.message); return; }
   if(naam){
     await sb.from('user_roles').update({naam}).eq('user_email', email);
     namenCache[email] = naam;
@@ -376,7 +380,7 @@ async function maakAccountAan(e){
   const rol = e.target.querySelector('#ac-rol').value;
   const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'maakAan', email, wachtwoord, naam}});
   btn.disabled = false; btn.textContent = '+ Account aanmaken';
-  if(error||data?.error){ alert('Fout: '+(data?.error||error?.message)); return; }
+  if(error||data?.error){ await toonMelding('Fout: '+(data?.error||error?.message)); return; }
   if(rol) await sb.from('user_roles').upsert({user_email:email, rol, naam:naam||null},{onConflict:'user_email,rol'});
   e.target.reset();
   await laadGebruikers();
@@ -397,7 +401,7 @@ async function slaatAccountBewerkingOp(e, email){
     const profiel = profielen.find(p=>p.email===email);
     if(profiel?.id){
       const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'updateWachtwoord', userId:profiel.id, wachtwoord}});
-      if(error||data?.error){ alert('Fout wachtwoord: '+(data?.error||error?.message)); return; }
+      if(error||data?.error){ await toonMelding('Fout wachtwoord: '+(data?.error||error?.message)); return; }
     }
   }
   bewerkEmail = null;
@@ -406,11 +410,11 @@ async function slaatAccountBewerkingOp(e, email){
 }
 
 async function verwijderAccount(email){
-  if(!confirm(`Account van ${email} verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
+  if(!await toonBevestiging(`Account van ${email} verwijderen?\nDit kan niet ongedaan worden gemaakt.`)) return;
   const profiel = profielen.find(p=>p.email===email);
   if(profiel?.id){
     const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'verwijder', userId:profiel.id}});
-    if(error||data?.error){ alert('Fout: '+(data?.error||error?.message)); return; }
+    if(error||data?.error){ await toonMelding('Fout: '+(data?.error||error?.message)); return; }
   }
   await sb.from('user_roles').delete().eq('user_email', email);
   await laadGebruikers();
@@ -430,14 +434,14 @@ function rolBadges(rls){
 
 async function wijzigRol(id, nieuweRol){
   const {error} = await sb.from('user_roles').update({rol:nieuweRol}).eq('id',id);
-  if(error){ alert('Fout: '+error.message); return; }
+  if(error){ await toonMelding('Fout: '+error.message); return; }
   const idx = gebruikers.findIndex(u=>u.id===id);
   if(idx>=0) gebruikers[idx].rol = nieuweRol;
   render();
 }
 
 async function verwijderRol(id){
-  if(!confirm('Rol verwijderen?')) return;
+  if(!await toonBevestiging('Rol verwijderen?')) return;
   await sb.from('user_roles').delete().eq('id',id);
   gebruikers = gebruikers.filter(u=>u.id!==id);
   render();
@@ -762,6 +766,32 @@ function setupRealtime(){
     .subscribe();
 }
 
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+let _modalResolve = null;
+function sluitModal(resultaat){
+  document.getElementById('modal-overlay').style.display='none';
+  if(_modalResolve){ _modalResolve(resultaat); _modalResolve=null; }
+}
+function toonMelding(tekst){
+  return new Promise(resolve=>{
+    document.getElementById('modal-tekst').textContent = tekst;
+    document.getElementById('modal-knoppen').innerHTML =
+      `<button class="btn-blauw" onclick="sluitModal(true)">OK</button>`;
+    document.getElementById('modal-overlay').style.display='flex';
+    _modalResolve = resolve;
+  });
+}
+function toonBevestiging(tekst){
+  return new Promise(resolve=>{
+    document.getElementById('modal-tekst').textContent = tekst;
+    document.getElementById('modal-knoppen').innerHTML =
+      `<button class="btn-outline" onclick="sluitModal(false)">Annuleren</button>
+       <button class="btn-rood" onclick="sluitModal(true)">Bevestigen</button>`;
+    document.getElementById('modal-overlay').style.display='flex';
+    _modalResolve = resolve;
+  });
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 async function init(){
   try{
@@ -804,5 +834,12 @@ async function init(){
 
 init();
 </script>
+
+<div id="modal-overlay">
+  <div id="modal-box">
+    <p id="modal-tekst"></p>
+    <div id="modal-knoppen"></div>
+  </div>
+</div>
 </body>
 </html>
