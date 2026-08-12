@@ -216,6 +216,7 @@ let realtimeSub = null;
 let beheerSub = 'gebruikers';
 let producten = [], circuits = [], klanten = [];
 let beheerDataGeladen = false;
+let bewerkKlantId = null;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
@@ -948,6 +949,26 @@ function renderBeheerCircuits(){
 }
 
 function renderBeheerKlanten(){
+  const rows = klanten.map(k=>{
+    if(bewerkKlantId===k.id) return `<div class="user-row" style="flex-direction:column;align-items:stretch;gap:10px">
+      <form onsubmit="slaKlantBewerkingOp(event,'${k.id}')" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+        <div class="field"><label class="field-label">Naam *</label><input class="inp" name="naam" value="${esc(k.naam)}" required></div>
+        <div class="field"><label class="field-label">E-mail</label><input class="inp" name="email" type="email" value="${esc(k.email||'')}"></div>
+        <div class="field"><label class="field-label">Telefoon</label><input class="inp" name="tel" value="${esc(k.telefoon||'')}"></div>
+        <button class="btn-blauw" type="submit" style="white-space:nowrap">Opslaan</button>
+        <button class="btn-outline" type="button" onclick="bewerkKlantId=null;render()">Annuleren</button>
+      </form>
+    </div>`;
+    return `<div class="user-row">
+      <div style="flex:1">
+        <span style="font-weight:600;font-size:14px">${esc(k.naam)}</span>
+        ${k.email?`<span style="color:#6b7280;font-size:12px;margin-left:10px">${esc(k.email)}</span>`:''}
+        ${k.telefoon?`<span style="color:#6b7280;font-size:12px;margin-left:10px">${esc(k.telefoon)}</span>`:''}
+      </div>
+      <button class="edit-btn" onclick="bewerkKlantId='${k.id}';render()" title="Bewerken">&#9998;</button>
+      <button class="del-btn" onclick="verwijderKlant('${k.id}')">&times;</button>
+    </div>`;
+  }).join('');
   return `
   <div class="form-card" style="margin-bottom:16px">
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuwe klant</div>
@@ -960,17 +981,8 @@ function renderBeheerKlanten(){
       <button class="btn-blauw" type="submit">&#43; Klant toevoegen</button>
     </form>
   </div>
-  ${klanten.length ? `<div class="form-card"><div style="overflow-x:auto">
-    <table class="items-tbl">
-      <thead><tr><th>Naam</th><th>E-mail</th><th>Telefoon</th><th></th></tr></thead>
-      <tbody>${klanten.map(k=>`<tr>
-        <td style="font-weight:600">${esc(k.naam)}</td>
-        <td style="color:#6b7280">${esc(k.email||'')}</td>
-        <td style="color:#6b7280">${esc(k.telefoon||'')}</td>
-        <td><button class="del-btn" onclick="verwijderKlant('${k.id}')">&times;</button></td>
-      </tr>`).join('')}</tbody>
-    </table>
-  </div></div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen klanten</div></div>`}`;
+  ${klanten.length ? `<div class="form-card">${rows}</div>`
+    : `<div class="empty-state"><div style="font-weight:700">Nog geen klanten</div></div>`}`;
 }
 
 async function voegProductToe(e){
@@ -1003,6 +1015,19 @@ async function voegKlantToe(e){
   if(error){await toonMelding('Fout: '+error.message);return;}
   klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
 }
+async function slaKlantBewerkingOp(e, id){
+  e.preventDefault();
+  const naam = e.target.querySelector('[name="naam"]').value.trim();
+  const email = e.target.querySelector('[name="email"]').value.trim()||null;
+  const telefoon = e.target.querySelector('[name="tel"]').value.trim()||null;
+  const {error} = await sb.from('verkoop_klanten').update({naam,email,telefoon}).eq('id',id);
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  const k = klanten.find(x=>x.id===id);
+  if(k){ k.naam=naam; k.email=email; k.telefoon=telefoon; }
+  klanten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
+  bewerkKlantId=null; render();
+}
+
 async function verwijderKlant(id){
   if(!await toonBevestiging('Klant verwijderen?')) return;
   await sb.from('verkoop_klanten').update({actief:false}).eq('id',id);
