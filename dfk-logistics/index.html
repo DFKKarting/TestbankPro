@@ -451,19 +451,41 @@ async function verwijderAccount(email){
   render();
 }
 
+const ALLE_ROLLEN = ['admin','dfk-engines','dfk-logistics','dfk-sales'];
+const ROL_LABEL = {admin:'admin','dfk-engines':'DFK Engines','dfk-logistics':'DFK Logistics','dfk-sales':'DFK Sales'};
+
 function rolBadges(rls){
-  return rls.map(r=>`<select class="role-sel role-${r.rol}" onchange="wijzigRol('${r.id}',this.value)">
+  return rls.map(r=>`<select class="role-sel role-${r.rol}" onchange="wijzigRol('${r.id}',this.value,this)">
     <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
     <option value="dfk-engines"${r.rol==='dfk-engines'?' selected':''}>DFK Engines</option>
     <option value="dfk-logistics"${r.rol==='dfk-logistics'?' selected':''}>DFK Logistics</option>
+    <option value="dfk-sales"${r.rol==='dfk-sales'?' selected':''}>DFK Sales</option>
   </select>`).join('');
 }
 
-async function wijzigRol(id, nieuweRol){
+function rolToevoegenKnop(email, rls){
+  const bestaand = rls.map(r=>r.rol);
+  const beschikbaar = ALLE_ROLLEN.filter(r=>!bestaand.includes(r));
+  if(!beschikbaar.length) return '';
+  const opts = beschikbaar.map(r=>`<option value="${r}">${ROL_LABEL[r]}</option>`).join('');
+  return `<select class="role-sel" style="background:#f3f4f6;color:#374151;border:1.5px dashed #d1d5db" onchange="voegRolToe('${esc(email)}',this.value)">
+    <option value="">+ rol</option>${opts}
+  </select>`;
+}
+
+async function wijzigRol(id, nieuweRol, sel){
   const {error} = await sb.from('user_roles').update({rol:nieuweRol}).eq('id',id);
   if(error){ await toonMelding('Fout: '+error.message); return; }
   const idx = gebruikers.findIndex(u=>u.id===id);
   if(idx>=0) gebruikers[idx].rol = nieuweRol;
+  if(sel){ sel.className = `role-sel role-${nieuweRol}`; }
+}
+
+async function voegRolToe(email, rol){
+  if(!rol) return;
+  const {data,error} = await sb.from('user_roles').insert({user_email:email, rol}).select().single();
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  gebruikers.push(data);
   render();
 }
 
@@ -785,6 +807,7 @@ function renderInstellingen(){
       </form>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
         ${rolBadges(rls)}
+        ${rolToevoegenKnop(email, rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
       </div>
     </div>`;
@@ -797,6 +820,7 @@ function renderInstellingen(){
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
         ${rolBadges(rls)}
+        ${rolToevoegenKnop(email, rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
         <button class="btn-outline" style="font-size:12px;padding:3px 8px" onclick="bewerkEmail='${esc(email)}';render()">&#9998; Bewerken</button>
         <button class="del-btn" style="font-size:13px;padding:3px 8px;border-radius:6px" onclick="verwijderAccount('${esc(email)}')" title="Account verwijderen">&times;</button>
