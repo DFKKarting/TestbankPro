@@ -96,6 +96,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .user-row:last-child{border-bottom:none}
 .user-email{font-size:14px;color:#111827;flex:1;min-width:160px;font-weight:500}
 .role-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;margin-right:4px;margin-bottom:2px}
+.role-sel{border:none;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none}
 .role-admin{background:#fee2e2;color:#dc2626}
 .role-testbank{background:#dbeafe;color:#1e40af}
 .role-materiaal{background:#d1fae5;color:#065f46}
@@ -413,7 +414,7 @@ async function verwijderAccount(email){
 }
 
 function rolBadges(rls){
-  return rls.map(r=>`<select class="sel role-${r.rol}" style="font-size:12px;padding:2px 4px;height:26px;border-radius:6px" onchange="wijzigRol('${r.id}',this.value)">
+  return rls.map(r=>`<select class="role-sel role-${r.rol}" onchange="wijzigRol('${r.id}',this.value)">
     <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
     <option value="testbank"${r.rol==='testbank'?' selected':''}>testbank</option>
     <option value="materiaal"${r.rol==='materiaal'?' selected':''}>materiaal</option>
