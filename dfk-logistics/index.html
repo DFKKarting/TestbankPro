@@ -324,7 +324,23 @@ function acEnter(e, dropId){
 }
 
 function bouwOnderdeelSuggesties(){
-  onderdeelSuggesties = [...new Set(aanvragen.map(a=>a.onderdeel).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'));
+  let opgeslagen = [];
+  try { opgeslagen = JSON.parse(localStorage.getItem('onderdeel_lijst')||'[]'); } catch{}
+  onderdeelSuggesties = [...new Set([...opgeslagen, ...aanvragen.map(a=>a.onderdeel).filter(Boolean)])].sort((a,b)=>a.localeCompare(b,'nl'));
+}
+
+function slaOnderdeelOp(naam){
+  if(!naam || onderdeelSuggesties.includes(naam)){
+    document.getElementById('ac-onderdeel-drop') && (document.getElementById('ac-onderdeel-drop').style.display='none');
+    return;
+  }
+  onderdeelSuggesties.push(naam);
+  onderdeelSuggesties.sort((a,b)=>a.localeCompare(b,'nl'));
+  try {
+    const lijst = JSON.parse(localStorage.getItem('onderdeel_lijst')||'[]');
+    if(!lijst.includes(naam)){ lijst.push(naam); localStorage.setItem('onderdeel_lijst', JSON.stringify(lijst)); }
+  } catch{}
+  document.getElementById('ac-onderdeel-drop') && (document.getElementById('ac-onderdeel-drop').style.display='none');
 }
 
 function filterOnderdelen(q){
@@ -343,6 +359,19 @@ function selectOnderdeel(naam){
   if(el) el.value = naam;
   const drop = document.getElementById('ac-onderdeel-drop');
   if(drop) drop.style.display='none';
+  document.getElementById('a-aantal')?.focus();
+}
+
+function onEnterOnderdeel(e){
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const drop = document.getElementById('ac-onderdeel-drop');
+  if(drop && drop.style.display !== 'none' && drop.querySelector('.ac-item')){
+    drop.querySelector('.ac-item').click();
+  } else {
+    slaOnderdeelOp(e.target.value.trim());
+    document.getElementById('a-aantal')?.focus();
+  }
 }
 
 async function laadBeheerData(){
@@ -674,7 +703,7 @@ function renderNieuw(){
           <div class="field">
             <label class="field-label">Onderdeel *</label>
             <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)" onkeydown="acEnter(event,'ac-onderdeel-drop')">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)" onkeydown="onEnterOnderdeel(event)">
               <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
             </div>
           </div>
@@ -725,7 +754,7 @@ function renderBewerken(){
           <div class="field">
             <label class="field-label">Onderdeel *</label>
             <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)" onkeydown="acEnter(event,'ac-onderdeel-drop')">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)" onkeydown="onEnterOnderdeel(event)">
               <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
             </div>
           </div>
