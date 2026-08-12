@@ -11,8 +11,8 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="ProDynoDFK">
-<title>ProDynoDFK</title>
+<meta name="apple-mobile-web-app-title" content="DFK Engines">
+<title>DFK Engines</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -235,7 +235,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   <div id="header-top">
     <div class="logo" onclick="navigeer('lijst')">
       <img src="/logos/dfk-engines-transp.png" style="height:44px;object-fit:contain;display:block">
-      <span class="logo-name">ProDynoDFK</span>
+      <span class="logo-name">DFK Engines</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
       <span id="sync-indicator" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#f59e0b;white-space:nowrap" title="Bezig met synchroniseren...">
@@ -275,7 +275,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
       <img src="logos/dfk-engines-transp.png" style="height:120px;object-fit:contain;display:block;margin:0 auto">
     </div>
     <div style="text-align:center;margin-bottom:24px">
-      <div class="login-logo-name">ProDynoDFK</div>
+      <div class="login-logo-name">DFK Engines</div>
     </div>
     <div class="login-title">Inloggen</div>
     <div class="login-sub">Voer je gegevens in om verder te gaan</div>
@@ -1958,7 +1958,7 @@ async function generatePdf(s,best){
   const hdrH=22;
   doc.setFillColor(17,24,39);doc.rect(0,0,W,hdrH,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
-  doc.text('ProDynoDFK — Testrapport',margin,14);
+  doc.text('DFK Engines — Testrapport',margin,14);
   // Status badge in header rechtsonder (als geen logo) of onder header
   const bText=s.uitkomst||'';
   const bColor=bText==='Geslaagd'?[209,250,229]:bText==='Afgekeurd'?[254,226,226]:[254,243,199];
@@ -2097,7 +2097,7 @@ async function generatePdf(s,best){
       doc.addPage();
       doc.setFillColor(17,24,39);doc.rect(0,0,W,22,'F');
       doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');
-      doc.text(`ProDynoDFK — Grafieken (${i+1}/${shots.length})`,margin,14);
+      doc.text(`DFK Engines — Grafieken (${i+1}/${shots.length})`,margin,14);
       try{
         const tmpImg=new Image();tmpImg.src=ss.data;
         const iw=tmpImg.naturalWidth||1920, ih=tmpImg.naturalHeight||1080;
@@ -2115,7 +2115,7 @@ async function generatePdf(s,best){
   for(let p=1;p<=pc;p++){
     doc.setPage(p);
     doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(156,163,175);
-    doc.text(`ProDynoDFK — ${s.motorNummer} — Pagina ${p} van ${pc}`,W/2,287,{align:'center'});
+    doc.text(`DFK Engines — ${s.motorNummer} — Pagina ${p} van ${pc}`,W/2,287,{align:'center'});
     doc.text(genDatum,W/2,292,{align:'center'});
   }
   doc.save(`testrapport_${s.motorNummer}_${new Date().toISOString().slice(0,10)}.pdf`);

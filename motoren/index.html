@@ -11,8 +11,8 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="ProDynoDFK">
-<title>Motoren — ProDynoDFK</title>
+<meta name="apple-mobile-web-app-title" content="DFK Engines">
+<title>Motoren — DFK Engines</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -110,7 +110,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   <div id="header-top">
     <div class="logo" onclick="window.location.href='/'">
       <img src="/logos/dfk-engines-transp.png" style="height:44px;object-fit:contain;display:block">
-      <span class="logo-name">ProDynoDFK</span>
+      <span class="logo-name">DFK Engines</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
       <span id="sync-indicator" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#f59e0b;white-space:nowrap" title="Bezig met synchroniseren...">
@@ -409,7 +409,7 @@ function drukMotorenAf(){
 
   const datum = new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'});
   const html = `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
-  <title>Motorenlijst – ProDynoDFK</title>
+  <title>Motorenlijst – DFK Engines</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px 32px}
@@ -425,11 +425,11 @@ function drukMotorenAf(){
     .footer{margin-top:24px;font-size:10px;color:#9ca3af;text-align:right}
     @media print{@page{margin:1.5cm}body{padding:0}}
   </style></head><body>
-  <h1>Motorenlijst – ProDynoDFK</h1>
+  <h1>Motorenlijst – DFK Engines</h1>
   <div class="sub">Afgedrukt op ${datum} · ${motoren.length} actieve motoren</div>
   ${dfk.length?`<h2>DFK Motoren (${dfk.length})</h2>${tabel(dfk,false)}`:''}
   ${klant.length?`<h2 style="page-break-before:always">Klantmotoren (${klant.length})</h2>${tabel(klant,true)}`:''}
-  <div class="footer">ProDynoDFK – Motorenlijst</div>
+  <div class="footer">DFK Engines – Motorenlijst</div>
   <script>window.onload=()=>{ window.print(); }<\/script>
   </body></html>`;
 
