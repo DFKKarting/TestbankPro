@@ -117,11 +117,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .items-tbl th{text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;border-bottom:2px solid #e5e7eb}
 .items-tbl td{padding:8px 8px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
 .items-tbl tr:last-child td{border-bottom:none}
-.ac-wrap{position:relative}
-.ac-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;max-height:200px;overflow-y:auto}
-.ac-item{padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6}
-.ac-item:hover{background:#eff6ff;color:#1d4ed8}
-.ac-item:last-child{border-bottom:none}
 .truck-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:7px;padding:11px 14px;display:flex;align-items:center;gap:10px}
 .truck-naam{font-size:14px;font-weight:700;color:#111827;flex:1}
 .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
@@ -219,17 +214,12 @@ let bewerkEmail = null;
 let bewerkAanvraagId = null;
 let realtimeSub = null;
 let beheerSub = 'gebruikers';
-let producten = [], circuits = [], klanten = [], onderdelen = [];
+let producten = [], circuits = [], klanten = [];
 let beheerDataGeladen = false;
-let onderdeelSuggesties = [];
-let bewerkOnderdeelId = null;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
-document.addEventListener('click', e => {
-  if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open');
-  if(!e.target.closest('.ac-wrap')){ const d=document.getElementById('ac-onderdeel-drop'); if(d) d.style.display='none'; }
-});
+document.addEventListener('click', e => { if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
 
 function updateNavActief(){
   ['overzicht','nieuw','werkplaats','vertrek','instellingen'].forEach(v => {
@@ -279,16 +269,13 @@ function aanvraagKaart(a, toonTruck){
 
 // ── DATA LADEN ────────────────────────────────────────────────────────────────
 async function laadAlles(){
-  const [{data:t},{data:a,error},{data:o}] = await Promise.all([
+  const [{data:t},{data:a,error}] = await Promise.all([
     sb.from('trucks').select('*').eq('actief',true).order('volgorde'),
     sb.from('aanvragen').select('*').order('created_at',{ascending:false}),
-    sb.from('onderdelen').select('*').eq('actief',true).order('naam'),
   ]);
   trucks = t || [];
   if(error) console.error(error);
   aanvragen = a || [];
-  onderdelen = o || [];
-  bouwOnderdeelSuggesties();
 }
 
 async function laadAanvragen(){
@@ -318,57 +305,6 @@ async function laadGebruikers(){
   if(el) el.textContent = gebruikerNaam || gebruiker?.email || '';
 }
 
-function acEnter(e, dropId){
-  if(e.key !== 'Enter') return;
-  const drop = document.getElementById(dropId);
-  if(!drop || drop.style.display === 'none') return;
-  e.preventDefault();
-  drop.querySelector('.ac-item')?.click();
-}
-
-function bouwOnderdeelSuggesties(){
-  const fromDb = onderdelen.map(o=>o.naam);
-  const fromAanvragen = aanvragen.map(a=>a.onderdeel).filter(Boolean);
-  onderdeelSuggesties = [...new Set([...fromDb, ...fromAanvragen])].sort((a,b)=>a.localeCompare(b,'nl'));
-}
-
-async function slaOnderdeelOp(naam){
-  const drop = document.getElementById('ac-onderdeel-drop');
-  if(drop) drop.style.display='none';
-  if(!naam || onderdelen.some(o=>o.naam===naam)) return;
-  const {data} = await sb.from('onderdelen').insert({naam,actief:true}).select().single();
-  if(data){ onderdelen.push(data); onderdelen.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); bouwOnderdeelSuggesties(); }
-}
-
-function filterOnderdelen(q){
-  const drop = document.getElementById('ac-onderdeel-drop');
-  if(!drop) return;
-  if(!q.trim()){ drop.style.display='none'; return; }
-  const term = q.toLowerCase();
-  const hits = onderdeelSuggesties.filter(s=>s.toLowerCase().includes(term)).slice(0,8);
-  if(!hits.length){ drop.style.display='none'; return; }
-  drop.innerHTML = hits.map(s=>`<div class="ac-item" onclick="selectOnderdeel(${JSON.stringify(s)})">${esc(s)}</div>`).join('');
-  drop.style.display='block';
-}
-
-function selectOnderdeel(naam){
-  const el = document.getElementById('a-onderdeel');
-  if(el) el.value = naam;
-  const drop = document.getElementById('ac-onderdeel-drop');
-  if(drop) drop.style.display='none';
-  document.getElementById('a-aantal')?.focus();
-}
-
-function onEnterOnderdeel(e){
-  if(e.key !== 'Enter') return;
-  e.preventDefault();
-  const drop = document.getElementById('ac-onderdeel-drop');
-  if(drop && drop.style.display !== 'none' && drop.querySelector('.ac-item')){
-    drop.querySelector('.ac-item').click();
-  } else {
-    slaOnderdeelOp(e.target.value.trim()).then(()=>document.getElementById('a-aantal')?.focus());
-  }
-}
 
 async function laadBeheerData(){
   if(beheerDataGeladen) return;
@@ -698,10 +634,7 @@ function renderNieuw(){
           </div>
           <div class="field">
             <label class="field-label">Onderdeel *</label>
-            <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)" onkeydown="onEnterOnderdeel(event)">
-              <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
-            </div>
+            <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off">
           </div>
           <div class="field">
             <label class="field-label">Aantal</label>
@@ -749,10 +682,7 @@ function renderBewerken(){
           </div>
           <div class="field">
             <label class="field-label">Onderdeel *</label>
-            <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)" onkeydown="onEnterOnderdeel(event)">
-              <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
-            </div>
+            <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}">
           </div>
           <div class="field">
             <label class="field-label">Aantal</label>
@@ -871,13 +801,12 @@ function renderVertrek(){
 
 
 function renderInstellingen(){
-  const tabs = ['gebruikers','trucks','onderdelen','producten','circuits','klanten'];
-  const labels = {gebruikers:'Gebruikers',trucks:'Trucks',onderdelen:'Onderdelen',producten:'Producten',circuits:'Circuits',klanten:'Klanten'};
+  const tabs = ['gebruikers','trucks','producten','circuits','klanten'];
+  const labels = {gebruikers:'Gebruikers',trucks:'Trucks',producten:'Producten',circuits:'Circuits',klanten:'Klanten'};
   const tabRow = `<div class="btab-row">${tabs.map(t=>`<button class="btab ${beheerSub===t?'active':''}" onclick="beheerSub='${t}';render()">${labels[t]}</button>`).join('')}</div>`;
   let content = '';
   if(beheerSub==='gebruikers') content = renderBeheerGebruikers();
   else if(beheerSub==='trucks') content = renderBeheerTrucks();
-  else if(beheerSub==='onderdelen') content = renderBeheerOnderdelen();
   else if(beheerSub==='producten') content = renderBeheerProducten();
   else if(beheerSub==='circuits') content = renderBeheerCircuits();
   else if(beheerSub==='klanten') content = renderBeheerKlanten();
@@ -950,60 +879,6 @@ function renderBeheerGebruikers(){
     </div>`;
 }
 
-function renderBeheerOnderdelen(){
-  const rows = onderdelen.map(o=>{
-    if(bewerkOnderdeelId===o.id) return `<div class="user-row">
-      <form onsubmit="slaOnderdeelBewerkingOp(event,'${o.id}')" style="display:flex;gap:8px;flex:1;align-items:center">
-        <input class="inp" name="naam" value="${esc(o.naam)}" required style="flex:1">
-        <button class="btn-blauw" type="submit" style="white-space:nowrap">Opslaan</button>
-        <button class="btn-outline" type="button" onclick="bewerkOnderdeelId=null;render()">Annuleren</button>
-      </form>
-    </div>`;
-    return `<div class="user-row">
-      <span style="flex:1;font-size:14px;font-weight:500">${esc(o.naam)}</span>
-      <button class="edit-btn" onclick="bewerkOnderdeelId='${o.id}';render()" title="Bewerken">&#9998;</button>
-      <button class="del-btn" onclick="verwijderOnderdeel('${o.id}')">&times;</button>
-    </div>`;
-  }).join('');
-  return `
-  <div class="form-card" style="margin-bottom:16px">
-    <form id="form-onderdeel" style="display:flex;gap:10px">
-      <input class="inp" id="o-naam" placeholder="Naam onderdeel" required style="flex:1">
-      <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Toevoegen</button>
-    </form>
-  </div>
-  ${onderdelen.length ? `<div class="form-card">${rows}</div>`
-    : `<div class="empty-state"><div style="font-weight:700">Nog geen onderdelen</div></div>`}`;
-}
-
-async function voegOnderdeelToe(e){
-  e.preventDefault();
-  const naam = e.target.querySelector('#o-naam').value.trim();
-  const {data,error} = await sb.from('onderdelen').insert({naam,actief:true}).select().single();
-  if(error){ await toonMelding('Fout: '+error.message); return; }
-  onderdelen.push(data); onderdelen.sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  bouwOnderdeelSuggesties();
-  e.target.reset(); render();
-}
-
-async function slaOnderdeelBewerkingOp(e, id){
-  e.preventDefault();
-  const naam = e.target.querySelector('[name="naam"]').value.trim();
-  const {error} = await sb.from('onderdelen').update({naam}).eq('id',id);
-  if(error){ await toonMelding('Fout: '+error.message); return; }
-  const idx = onderdelen.findIndex(o=>o.id===id);
-  if(idx>=0) onderdelen[idx].naam = naam;
-  onderdelen.sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  bouwOnderdeelSuggesties();
-  bewerkOnderdeelId = null; render();
-}
-
-async function verwijderOnderdeel(id){
-  if(!await toonBevestiging('Onderdeel verwijderen?')) return;
-  await sb.from('onderdelen').update({actief:false}).eq('id',id);
-  onderdelen = onderdelen.filter(o=>o.id!==id);
-  bouwOnderdeelSuggesties(); render();
-}
 
 function renderBeheerTrucks(){
   const truckHtml = trucks.map(t=>`<div class="truck-card">
@@ -1139,7 +1014,6 @@ function bindForms(){
   const fb = document.getElementById('form-bewerken');   if(fb) fb.onsubmit = slaatAanvraagBewerkingOp;
   const ft = document.getElementById('form-truck');      if(ft) ft.onsubmit = voegTruckToe;
   const fac = document.getElementById('form-account');   if(fac) fac.onsubmit = maakAccountAan;
-  const fo = document.getElementById('form-onderdeel');  if(fo) fo.onsubmit = voegOnderdeelToe;
   const fp = document.getElementById('form-product');    if(fp) fp.onsubmit = voegProductToe;
   const fc = document.getElementById('form-circuit');    if(fc) fc.onsubmit = voegCircuitToe;
   const fk = document.getElementById('form-klant');      if(fk) fk.onsubmit = voegKlantToe;
