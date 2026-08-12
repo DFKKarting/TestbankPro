@@ -109,6 +109,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 #modal-tekst{font-size:15px;color:#111827;line-height:1.5;margin-bottom:20px;white-space:pre-wrap}
 #modal-knoppen{display:flex;gap:10px;justify-content:flex-end}
 .del-btn:hover{background:#fee2e2}
+.btab-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.btab{background:none;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#6b7280;transition:background .12s,color .12s,border-color .12s}
+.btab:hover{border-color:#2563eb;color:#2563eb}
+.btab.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.items-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.items-tbl th{text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;border-bottom:2px solid #e5e7eb}
+.items-tbl td{padding:8px 8px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.items-tbl tr:last-child td{border-bottom:none}
 .truck-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:7px;padding:11px 14px;display:flex;align-items:center;gap:10px}
 .truck-naam{font-size:14px;font-weight:700;color:#111827;flex:1}
 .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
@@ -205,6 +213,9 @@ let statusFilter = 'alles';
 let bewerkEmail = null;
 let bewerkAanvraagId = null;
 let realtimeSub = null;
+let beheerSub = 'gebruikers';
+let producten = [], circuits = [], klanten = [];
+let beheerDataGeladen = false;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
@@ -291,6 +302,17 @@ async function laadGebruikers(){
   gebruikerNaam = namenCache[gebruiker?.email] || gebruikerNaam;
   const el = document.getElementById('header-naam');
   if(el) el.textContent = gebruikerNaam || gebruiker?.email || '';
+}
+
+async function laadBeheerData(){
+  if(beheerDataGeladen) return;
+  const [p, c, k] = await Promise.all([
+    sb.from('producten').select('*').eq('actief',true).order('naam'),
+    sb.from('circuits').select('*').eq('actief',true).order('volgorde'),
+    sb.from('verkoop_klanten').select('*').eq('actief',true).order('naam'),
+  ]);
+  producten = p.data||[]; circuits = c.data||[]; klanten = k.data||[];
+  beheerDataGeladen = true;
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -777,12 +799,19 @@ function renderVertrek(){
 
 
 function renderInstellingen(){
-  const truckHtml = trucks.map(t=>`<div class="truck-card">
-    <span class="truck-naam">&#x1F69B; ${esc(t.naam)}</span>
-    <button class="del-btn" onclick="verwijderTruck('${t.id}')">&times;</button>
-  </div>`).join('');
+  const tabs = ['gebruikers','trucks','producten','circuits','klanten'];
+  const labels = {gebruikers:'Gebruikers',trucks:'Trucks',producten:'Producten',circuits:'Circuits',klanten:'Klanten'};
+  const tabRow = `<div class="btab-row">${tabs.map(t=>`<button class="btab ${beheerSub===t?'active':''}" onclick="beheerSub='${t}';render()">${labels[t]}</button>`).join('')}</div>`;
+  let content = '';
+  if(beheerSub==='gebruikers') content = renderBeheerGebruikers();
+  else if(beheerSub==='trucks') content = renderBeheerTrucks();
+  else if(beheerSub==='producten') content = renderBeheerProducten();
+  else if(beheerSub==='circuits') content = renderBeheerCircuits();
+  else if(beheerSub==='klanten') content = renderBeheerKlanten();
+  return `<div class="head-row"><h1 class="page-title">&#9881; Beheer</h1></div>${tabRow}${content}`;
+}
 
-  // Alle profielen (auth-accounts) tonen, aangevuld met handmatig toegevoegde emails zonder profiel
+function renderBeheerGebruikers(){
   const emailsMetProfiel = new Set(profielen.map(p=>p.email));
   const extraEmails = [...new Set(gebruikers.map(u=>u.user_email))].filter(e=>!emailsMetProfiel.has(e));
   const alleGebruikers = [
@@ -806,8 +835,7 @@ function renderInstellingen(){
         </div>
       </form>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
-        ${rolBadges(rls)}
-        ${rolToevoegenKnop(email, rls)}
+        ${rolBadges(rls)}${rolToevoegenKnop(email, rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
       </div>
     </div>`;
@@ -819,27 +847,15 @@ function renderInstellingen(){
         <br><span style="color:#9ca3af;font-size:11px">${lastActive ? 'Actief: '+tijdGeleden(lastActive) : 'Nog nooit ingelogd'}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-        ${rolBadges(rls)}
-        ${rolToevoegenKnop(email, rls)}
+        ${rolBadges(rls)}${rolToevoegenKnop(email, rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
         <button class="btn-outline" style="font-size:12px;padding:3px 8px" onclick="bewerkEmail='${esc(email)}';render()">&#9998; Bewerken</button>
         <button class="del-btn" style="font-size:13px;padding:3px 8px;border-radius:6px" onclick="verwijderAccount('${esc(email)}')" title="Account verwijderen">&times;</button>
       </div>
     </div>`;
   }).join('');
-
-  return `<div class="head-row"><h1 class="page-title">&#9881; Instellingen</h1></div>
-
-    <div class="section-label">Trucks</div>
-    <div class="form-card" style="margin-bottom:20px">
-      <form id="form-truck" style="display:flex;gap:10px;margin-bottom:${trucks.length?'16px':'0'}">
-        <input class="inp" id="t-naam" placeholder="Naam truck" required style="flex:1">
-        <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Toevoegen</button>
-      </form>
-      ${truckHtml}
-    </div>
-
-    <div class="section-label">Account aanmaken</div>
+  return `
+    <div class="section-label" style="margin-top:0">Account aanmaken</div>
     <div class="form-card" style="margin-bottom:20px">
       <form id="form-account" style="display:flex;gap:10px;flex-wrap:wrap">
         <input class="inp" id="ac-naam" placeholder="Voornaam" style="flex:1;min-width:130px">
@@ -850,26 +866,156 @@ function renderInstellingen(){
           <option value="admin">admin</option>
           <option value="dfk-engines">DFK Engines</option>
           <option value="dfk-logistics">DFK Logistics</option>
+          <option value="dfk-sales">DFK Sales</option>
         </select>
         <button class="btn-groen" type="submit" style="white-space:nowrap">+ Account aanmaken</button>
       </form>
     </div>
-
     <div class="section-label">Gebruikers &amp; Rollen</div>
     <div class="form-card">
       ${alleGebruikers.length ? userHtml : `<div style="color:#9ca3af;font-size:13px;padding:8px 0">Nog geen accounts gevonden.</div>`}
     </div>`;
 }
 
+function renderBeheerTrucks(){
+  const truckHtml = trucks.map(t=>`<div class="truck-card">
+    <span class="truck-naam">&#x1F69B; ${esc(t.naam)}</span>
+    <button class="del-btn" onclick="verwijderTruck('${t.id}')">&times;</button>
+  </div>`).join('');
+  return `<div class="form-card">
+    <form id="form-truck" style="display:flex;gap:10px;margin-bottom:${trucks.length?'16px':'0'}">
+      <input class="inp" id="t-naam" placeholder="Naam truck" required style="flex:1">
+      <button class="btn-blauw" type="submit" style="white-space:nowrap">+ Toevoegen</button>
+    </form>
+    ${truckHtml}
+  </div>`;
+}
+
+function renderBeheerProducten(){
+  const catOpts = ['Onderdelen','Banden','Olie','Gereedschap','Kartmateriaal','Accessoires','Verbruiksartikelen','Diensten','Algemeen'].map(c=>`<option value="${c}">${c}</option>`).join('');
+  return `
+  <div class="form-card" style="margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuw product toevoegen</div>
+    <form id="form-product">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field" style="grid-column:1/-1">
+          <label class="field-label">Productnaam *</label>
+          <input class="inp" id="p-naam" placeholder="bv. Remblok X30, Stuurstang..." required autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label">Artikelnummer</label>
+          <input class="inp" id="p-art" placeholder="bv. RB-X30-001" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label">Categorie</label>
+          <select class="sel" id="p-cat">${catOpts}</select>
+        </div>
+      </div>
+      <button class="btn-blauw" type="submit">&#43; Product toevoegen</button>
+    </form>
+  </div>
+  ${producten.length ? `<div class="form-card"><div style="overflow-x:auto">
+    <table class="items-tbl">
+      <thead><tr><th>Naam</th><th>Art.nr.</th><th>Categorie</th><th></th></tr></thead>
+      <tbody>${producten.map(p=>`<tr>
+        <td style="font-weight:600">${esc(p.naam)}</td>
+        <td style="color:#6b7280">${esc(p.artikelnummer||'')}</td>
+        <td><span style="background:#e5e7eb;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600">${esc(p.categorie||'')}</span></td>
+        <td><button class="del-btn" onclick="verwijderProduct('${p.id}')">&times;</button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div></div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen producten in catalogus</div></div>`}`;
+}
+
+function renderBeheerCircuits(){
+  return `
+  <div class="form-card" style="margin-bottom:16px">
+    <form id="form-circuit" style="display:flex;gap:10px;align-items:flex-end">
+      <div class="field" style="flex:1"><label class="field-label">Naam circuit</label><input class="inp" id="c-naam" placeholder="bv. Genk" required autocomplete="off"></div>
+      <button class="btn-blauw" type="submit" style="white-space:nowrap">&#43; Toevoegen</button>
+    </form>
+  </div>
+  ${circuits.length ? `<div class="form-card"><table class="items-tbl">
+    <thead><tr><th>Circuit</th><th></th></tr></thead>
+    <tbody>${circuits.map(c=>`<tr>
+      <td style="font-weight:600">&#128205; ${esc(c.naam)}</td>
+      <td style="text-align:right"><button class="del-btn" onclick="verwijderCircuit('${c.id}')">&times;</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen circuits</div></div>`}`;
+}
+
+function renderBeheerKlanten(){
+  return `
+  <div class="form-card" style="margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuwe klant</div>
+    <form id="form-klant">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field"><label class="field-label">Naam *</label><input class="inp" id="k-naam" placeholder="Klantnaam" required autocomplete="off"></div>
+        <div class="field"><label class="field-label">Team</label><input class="inp" id="k-team" placeholder="Teamnaam" autocomplete="off"></div>
+        <div class="field"><label class="field-label">E-mail</label><input class="inp" id="k-email" type="email" placeholder="klant@email.com" autocomplete="off"></div>
+        <div class="field"><label class="field-label">Telefoon</label><input class="inp" id="k-tel" placeholder="+32 ..." autocomplete="off"></div>
+      </div>
+      <button class="btn-blauw" type="submit">&#43; Klant toevoegen</button>
+    </form>
+  </div>
+  ${klanten.length ? `<div class="form-card"><div style="overflow-x:auto">
+    <table class="items-tbl">
+      <thead><tr><th>Naam</th><th>Team</th><th>E-mail</th><th>Telefoon</th><th></th></tr></thead>
+      <tbody>${klanten.map(k=>`<tr>
+        <td style="font-weight:600">${esc(k.naam)}</td>
+        <td style="color:#6b7280">${esc(k.team||'')}</td>
+        <td style="color:#6b7280">${esc(k.email||'')}</td>
+        <td style="color:#6b7280">${esc(k.telefoon||'')}</td>
+        <td><button class="del-btn" onclick="verwijderKlant('${k.id}')">&times;</button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div></div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen klanten</div></div>`}`;
+}
+
+async function voegProductToe(e){
+  e.preventDefault(); const f=e.target;
+  const naam=f.querySelector('#p-naam').value.trim();
+  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,categorie:f.querySelector('#p-cat').value,actief:true}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  producten.push(data); producten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
+}
+async function verwijderProduct(id){
+  if(!await toonBevestiging('Product verwijderen uit catalogus?')) return;
+  await sb.from('producten').update({actief:false}).eq('id',id);
+  producten=producten.filter(p=>p.id!==id); render();
+}
+async function voegCircuitToe(e){
+  e.preventDefault();
+  const naam=e.target.querySelector('#c-naam').value.trim();
+  const {data,error}=await sb.from('circuits').insert({naam,actief:true,volgorde:circuits.length}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  circuits.push(data); e.target.reset(); render();
+}
+async function verwijderCircuit(id){
+  if(!await toonBevestiging('Circuit verwijderen?')) return;
+  await sb.from('circuits').update({actief:false}).eq('id',id);
+  circuits=circuits.filter(c=>c.id!==id); render();
+}
+async function voegKlantToe(e){
+  e.preventDefault(); const f=e.target;
+  const {data,error}=await sb.from('verkoop_klanten').insert({naam:f.querySelector('#k-naam').value.trim(),team:f.querySelector('#k-team').value.trim()||null,email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
+}
+async function verwijderKlant(id){
+  if(!await toonBevestiging('Klant verwijderen?')) return;
+  await sb.from('verkoop_klanten').update({actief:false}).eq('id',id);
+  klanten=klanten.filter(k=>k.id!==id); render();
+}
+
 function bindForms(){
-  const fa = document.getElementById('form-aanvraag');
-  if(fa) fa.onsubmit = slaatAanvraagOp;
-  const fb = document.getElementById('form-bewerken');
-  if(fb) fb.onsubmit = slaatAanvraagBewerkingOp;
-  const ft = document.getElementById('form-truck');
-  if(ft) ft.onsubmit = voegTruckToe;
-  const fac = document.getElementById('form-account');
-  if(fac) fac.onsubmit = maakAccountAan;
+  const fa = document.getElementById('form-aanvraag');   if(fa) fa.onsubmit = slaatAanvraagOp;
+  const fb = document.getElementById('form-bewerken');   if(fb) fb.onsubmit = slaatAanvraagBewerkingOp;
+  const ft = document.getElementById('form-truck');      if(ft) ft.onsubmit = voegTruckToe;
+  const fac = document.getElementById('form-account');   if(fac) fac.onsubmit = maakAccountAan;
+  const fp = document.getElementById('form-product');    if(fp) fp.onsubmit = voegProductToe;
+  const fc = document.getElementById('form-circuit');    if(fc) fc.onsubmit = voegCircuitToe;
+  const fk = document.getElementById('form-klant');      if(fk) fk.onsubmit = voegKlantToe;
 }
 
 // ── REALTIME ──────────────────────────────────────────────────────────────────
@@ -946,6 +1092,7 @@ async function init(){
     ruimOudeAanvragenOp(),
     laadAlles(),
     rollen.has('admin') ? laadGebruikers() : Promise.resolve(),
+    rollen.has('admin') ? laadBeheerData() : Promise.resolve(),
   ]);
   setupRealtime();
   updateLaatsteActief();
