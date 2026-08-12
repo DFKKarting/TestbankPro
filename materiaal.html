@@ -154,7 +154,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 <script>
 const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
-const SUPABASE_SERVICE_KEY = 'VULL_HIER_JE_SERVICE_ROLE_KEY_IN';
 
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmtDatum = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -179,7 +178,6 @@ const PRIO = {
 const PRIO_VOLGORDE = { urgent:0, hoog:1, normaal:2, laag:3 };
 
 let sb = null;
-let sbAdmin = null;
 let gebruiker = null;
 let gebruikerNaam = '';
 let namenCache = {};
@@ -369,10 +367,9 @@ async function maakAccountAan(e){
   if(!email||!wachtwoord) return;
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = 'Bezig…';
-  const {data,error} = await sbAdmin.auth.admin.createUser({email, password:wachtwoord, email_confirm:true});
+  const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'maakAan', email, wachtwoord, naam}});
   btn.disabled = false; btn.textContent = '+ Account aanmaken';
-  if(error){ alert('Fout: '+error.message); return; }
-  if(naam) await sb.from('profiles').update({naam}).eq('email', email);
+  if(error||data?.error){ alert('Fout: '+(data?.error||error?.message)); return; }
   e.target.reset();
   await laadGebruikers();
   render();
@@ -389,8 +386,11 @@ async function slaatAccountBewerkingOp(e, email){
     if(gebruiker.email === email){ gebruikerNaam = naam; document.getElementById('header-naam').textContent = naam; }
   }
   if(wachtwoord){
-    const {data:u} = await sbAdmin.from('profiles').select('id').eq('email',email).single();
-    if(u?.id) await sbAdmin.auth.admin.updateUserById(u.id, {password: wachtwoord});
+    const profiel = profielen.find(p=>p.email===email);
+    if(profiel?.id){
+      const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'updateWachtwoord', userId:profiel.id, wachtwoord}});
+      if(error||data?.error){ alert('Fout wachtwoord: '+(data?.error||error?.message)); return; }
+    }
   }
   bewerkEmail = null;
   await laadGebruikers();
@@ -401,8 +401,8 @@ async function verwijderAccount(email){
   if(!confirm(`Account van ${email} verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
   const profiel = profielen.find(p=>p.email===email);
   if(profiel?.id){
-    const {error} = await sbAdmin.auth.admin.deleteUser(profiel.id);
-    if(error){ alert('Fout: '+error.message); return; }
+    const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'verwijder', userId:profiel.id}});
+    if(error||data?.error){ alert('Fout: '+(data?.error||error?.message)); return; }
   }
   await sb.from('user_roles').delete().eq('user_email', email);
   await laadGebruikers();
@@ -733,7 +733,6 @@ function setupRealtime(){
 async function init(){
   try{
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    sbAdmin = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {auth:{persistSession:false,autoRefreshToken:false}});
     const {data:{session}} = await sb.auth.getSession();
     if(!session){ window.location.href='index.html'; return; }
     gebruiker = session.user;
