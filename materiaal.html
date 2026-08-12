@@ -373,9 +373,11 @@ async function maakAccountAan(e){
   if(!email||!wachtwoord) return;
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = 'Bezig…';
+  const rol = e.target.querySelector('#ac-rol').value;
   const {data,error} = await sb.functions.invoke('admin-gebruikers', {body:{actie:'maakAan', email, wachtwoord, naam}});
   btn.disabled = false; btn.textContent = '+ Account aanmaken';
   if(error||data?.error){ alert('Fout: '+(data?.error||error?.message)); return; }
+  if(rol) await sb.from('user_roles').upsert({user_email:email, rol, naam:naam||null},{onConflict:'user_email,rol'});
   e.target.reset();
   await laadGebruikers();
   render();
@@ -412,6 +414,25 @@ async function verwijderAccount(email){
   }
   await sb.from('user_roles').delete().eq('user_email', email);
   await laadGebruikers();
+  render();
+}
+
+function rolBadges(rls){
+  return rls.map(r=>`<span style="display:inline-flex;align-items:center;gap:3px">
+    <select class="sel role-${r.rol}" style="font-size:12px;padding:2px 4px;height:26px;border-radius:6px" onchange="wijzigRol('${r.id}',this.value)">
+      <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
+      <option value="testbank"${r.rol==='testbank'?' selected':''}>testbank</option>
+      <option value="materiaal"${r.rol==='materiaal'?' selected':''}>materiaal</option>
+    </select>
+    <button class="del-btn" style="font-size:12px;padding:0 3px" onclick="verwijderRol('${r.id}')">&times;</button>
+  </span>`).join('');
+}
+
+async function wijzigRol(id, nieuweRol){
+  const {error} = await sb.from('user_roles').update({rol:nieuweRol}).eq('id',id);
+  if(error){ alert('Fout: '+error.message); return; }
+  const idx = gebruikers.findIndex(u=>u.id===id);
+  if(idx>=0) gebruikers[idx].rol = nieuweRol;
   render();
 }
 
@@ -656,7 +677,7 @@ function renderInstellingen(){
         </div>
       </form>
       <div style="display:flex;flex-wrap:wrap;gap:4px">
-        ${rls.map(r=>`<span class="role-badge role-${r.rol}">${r.rol} <button class="del-btn" style="font-size:12px;padding:0 2px" onclick="verwijderRol('${r.id}')">&times;</button></span>`).join('')}
+        ${rolBadges(rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
       </div>
     </div>`;
@@ -667,7 +688,7 @@ function renderInstellingen(){
         ${!heeftAccount?`<span style="color:#f59e0b;font-size:11px;margin-left:6px">&#9888; geen account</span>`:''}
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-        ${rls.map(r=>`<span class="role-badge role-${r.rol}">${r.rol} <button class="del-btn" style="font-size:12px;padding:0 2px" onclick="verwijderRol('${r.id}')">&times;</button></span>`).join('')}
+        ${rolBadges(rls)}
         ${rls.length===0?`<span style="color:#9ca3af;font-size:12px;font-style:italic">geen rol</span>`:''}
         <button class="btn-outline" style="font-size:12px;padding:3px 8px" onclick="bewerkEmail='${esc(email)}';render()">&#9998; Bewerken</button>
         <button class="del-btn" style="font-size:13px;padding:3px 8px;border-radius:6px" onclick="verwijderAccount('${esc(email)}')" title="Account verwijderen">&times;</button>
@@ -692,6 +713,12 @@ function renderInstellingen(){
         <input class="inp" id="ac-naam" placeholder="Voornaam" style="flex:1;min-width:130px">
         <input class="inp" id="ac-email" type="email" placeholder="e-mailadres" required style="flex:2;min-width:180px">
         <input class="inp" id="ac-wachtwoord" type="password" placeholder="Tijdelijk wachtwoord" required style="flex:1;min-width:160px">
+        <select class="sel" id="ac-rol" style="flex:1;min-width:130px">
+          <option value="">Geen rol</option>
+          <option value="admin">admin</option>
+          <option value="testbank">testbank</option>
+          <option value="materiaal">materiaal</option>
+        </select>
         <button class="btn-groen" type="submit" style="white-space:nowrap">+ Account aanmaken</button>
       </form>
     </div>
