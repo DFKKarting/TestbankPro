@@ -267,8 +267,12 @@ async function logActie(verkoopId, actie, details){
 async function maakNieuweVerkoop(e){
   e.preventDefault();
   const f = e.target;
-  const klantNaam = (acKlantSel?.naam || f.querySelector('#n-klant-inp').value).trim();
-  const klantId = acKlantSel?.id || null;
+  let klantNaam = (acKlantSel?.naam || f.querySelector('#n-klant-inp').value).trim();
+  let klantId = acKlantSel?.id || null;
+  if(!acKlantSel && klantNaam){
+    const {data:nk} = await sb.from('verkoop_klanten').insert({naam:klantNaam,actief:true}).select().single();
+    if(nk){ klanten.push(nk); klanten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); klantId=nk.id; }
+  }
   const circuitId = f.querySelector('#n-circuit').value || null;
   const circuit = circuits.find(c=>c.id===circuitId);
   const circuitNaam = circuit?.naam || '';
@@ -375,9 +379,9 @@ function filterKlanten(q){
   if(!drop) return;
   if(!q.trim()){ drop.style.display='none'; return; }
   const term = q.toLowerCase();
-  const hits = klanten.filter(k=>k.naam.toLowerCase().includes(term)||(k.team||'').toLowerCase().includes(term)).slice(0,8);
+  const hits = klanten.filter(k=>k.naam.toLowerCase().includes(term)).slice(0,8);
   drop.innerHTML = hits.map(k=>
-    `<div class="ac-item" onclick="selectKlant('${k.id}')"><span>${esc(k.naam)}${k.team?` <span style="color:#9ca3af;font-size:11px">${esc(k.team)}</span>`:''}</span></div>`
+    `<div class="ac-item" onclick="selectKlant('${k.id}')">${esc(k.naam)}</div>`
   ).join('') + `<div class="ac-nieuw" onclick="selectNieuweKlant(document.getElementById('n-klant-inp').value)">&#43; Nieuwe klant aanmaken</div>`;
   drop.style.display='block';
 }
@@ -387,7 +391,7 @@ function selectKlant(id){
   if(!k) return;
   acKlantSel=k;
   const el = document.getElementById('n-klant-inp');
-  if(el) el.value = k.naam + (k.team?` (${k.team})`:'');
+  if(el) el.value = k.naam;
   document.getElementById('ac-klant-drop').style.display='none';
   document.getElementById('n-circuit')?.focus();
 }

@@ -117,6 +117,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .items-tbl th{text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;border-bottom:2px solid #e5e7eb}
 .items-tbl td{padding:8px 8px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
 .items-tbl tr:last-child td{border-bottom:none}
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;max-height:200px;overflow-y:auto}
+.ac-item{padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6}
+.ac-item:hover{background:#eff6ff;color:#1d4ed8}
+.ac-item:last-child{border-bottom:none}
 .truck-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:7px;padding:11px 14px;display:flex;align-items:center;gap:10px}
 .truck-naam{font-size:14px;font-weight:700;color:#111827;flex:1}
 .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
@@ -216,10 +221,14 @@ let realtimeSub = null;
 let beheerSub = 'gebruikers';
 let producten = [], circuits = [], klanten = [];
 let beheerDataGeladen = false;
+let onderdeelSuggesties = [];
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
-document.addEventListener('click', e => { if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
+document.addEventListener('click', e => {
+  if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open');
+  if(!e.target.closest('.ac-wrap')){ const d=document.getElementById('ac-onderdeel-drop'); if(d) d.style.display='none'; }
+});
 
 function updateNavActief(){
   ['overzicht','nieuw','werkplaats','vertrek','instellingen'].forEach(v => {
@@ -276,12 +285,14 @@ async function laadAlles(){
   trucks = t || [];
   if(error) console.error(error);
   aanvragen = a || [];
+  bouwOnderdeelSuggesties();
 }
 
 async function laadAanvragen(){
   const {data,error} = await sb.from('aanvragen').select('*').order('created_at',{ascending:false});
   if(error){ console.error(error); aanvragen=[]; return; }
   aanvragen = data || [];
+  bouwOnderdeelSuggesties();
 }
 
 async function ruimOudeAanvragenOp(){
@@ -302,6 +313,28 @@ async function laadGebruikers(){
   gebruikerNaam = namenCache[gebruiker?.email] || gebruikerNaam;
   const el = document.getElementById('header-naam');
   if(el) el.textContent = gebruikerNaam || gebruiker?.email || '';
+}
+
+function bouwOnderdeelSuggesties(){
+  onderdeelSuggesties = [...new Set(aanvragen.map(a=>a.onderdeel).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'));
+}
+
+function filterOnderdelen(q){
+  const drop = document.getElementById('ac-onderdeel-drop');
+  if(!drop) return;
+  if(!q.trim()){ drop.style.display='none'; return; }
+  const term = q.toLowerCase();
+  const hits = onderdeelSuggesties.filter(s=>s.toLowerCase().includes(term)).slice(0,8);
+  if(!hits.length){ drop.style.display='none'; return; }
+  drop.innerHTML = hits.map(s=>`<div class="ac-item" onclick="selectOnderdeel(${JSON.stringify(s)})">${esc(s)}</div>`).join('');
+  drop.style.display='block';
+}
+
+function selectOnderdeel(naam){
+  const el = document.getElementById('a-onderdeel');
+  if(el) el.value = naam;
+  const drop = document.getElementById('ac-onderdeel-drop');
+  if(drop) drop.style.display='none';
 }
 
 async function laadBeheerData(){
@@ -358,7 +391,7 @@ async function slaatAanvraagOp(e){
     aangevraagd_op: new Date().toISOString(),
   }).select().single();
   if(error){ await toonMelding('Opslaan mislukt: '+error.message); return; }
-  if(data) aanvragen.unshift(data);
+  if(data){ aanvragen.unshift(data); bouwOnderdeelSuggesties(); }
   navigeer('overzicht');
 }
 
@@ -632,7 +665,10 @@ function renderNieuw(){
           </div>
           <div class="field">
             <label class="field-label">Onderdeel *</label>
-            <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off">
+            <div class="ac-wrap">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)">
+              <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
+            </div>
           </div>
           <div class="field">
             <label class="field-label">Aantal</label>
@@ -680,7 +716,10 @@ function renderBewerken(){
           </div>
           <div class="field">
             <label class="field-label">Onderdeel *</label>
-            <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}">
+            <div class="ac-wrap">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)">
+              <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
+            </div>
           </div>
           <div class="field">
             <label class="field-label">Aantal</label>
