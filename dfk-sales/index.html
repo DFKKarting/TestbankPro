@@ -312,6 +312,11 @@ async function voegItemToe(e){
   if(!naam){ await toonMelding('Voer een productnaam in.'); return; }
   const aantal = Math.max(1,parseInt(f.querySelector('#i-aantal').value)||1);
 
+  if(!acProductSel){
+    const {data:np} = await sb.from('producten').insert({naam,actief:true,categorie:'Algemeen'}).select().single();
+    if(np){ producten.push(np); producten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); acProductSel=np; }
+  }
+
   const {data,error} = await sb.from('verkoop_items').insert({
     verkoop_id:huidigVerkoopId,
     product_id:acProductSel?.id||null,
@@ -422,7 +427,7 @@ function filterProducten(q){
       <div><div style="font-weight:600">${esc(p.naam)}</div>${p.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${esc(p.artikelnummer)}</div>`:''}</div>
       ${p.categorie?`<span class="ac-sub">${esc(p.categorie)}</span>`:''}
     </div>`).join('') +
-    `<div class="ac-nieuw" onclick="selectVrijProduct(document.getElementById('i-naam-inp').value)">&#43; Vrij product (geen catalogus)</div>`;
+    (hits.length ? '' : `<div class="ac-nieuw" onclick="selectVrijProduct(document.getElementById('i-naam-inp').value)">&#43; Nieuw product opslaan in catalogus</div>`);
   drop.style.display='block';
 }
 
