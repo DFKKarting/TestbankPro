@@ -95,6 +95,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
             <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
             <div class="nav-divider"></div>
           </div>
+          <div id="nav-sales-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-sales/'">DFK Sales</button>
+            <div class="nav-divider"></div>
+          </div>
           <button class="nav-item" onclick="doLogout()">Afmelden</button>
         </div>
       </div>
@@ -447,6 +451,7 @@ async function init() {
   sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:_p})=>{const _el=document.getElementById('header-naam');if(_el)_el.textContent=_p?.naam||session.user.email.split('@')[0];});
   if(rol.has('admin')){const _m=document.getElementById('nav-materiaal');if(_m)_m.style.display='';}
   if(rol.has('admin')){const _b=document.getElementById('nav-instellingen-wrap');if(_b)_b.style.display='';}
+  if(rol.has('admin')||rol.has('dfk-sales')){const _s=document.getElementById('nav-sales-wrap');if(_s)_s.style.display='';}
   document.getElementById('db-status').innerHTML = '<span class="db-dot" style="background:#10b981"></span>Supabase';
   const [data] = await Promise.all([dbLoad(), dbMotorenLoad()]);
   sessies = data || [];

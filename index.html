@@ -257,6 +257,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
             <button class="nav-item" onclick="localStorage.setItem('mat_view','instellingen');window.location.href='/dfk-logistics/'">&#9881; Beheer</button>
             <div class="nav-divider"></div>
           </div>
+          <div id="nav-sales-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-sales/'">DFK Sales</button>
+            <div class="nav-divider"></div>
+          </div>
           <button class="nav-item" onclick="doLogout()">Afmelden</button>
         </div>
       </div>
@@ -632,6 +636,7 @@ async function loadAndShow() {
     const rollen = new Set((rolRes.data||[]).map(r=>r.rol));
     if (rollen.has('admin')) document.getElementById('nav-materiaal').style.display = '';
     if (rollen.has('admin')) document.getElementById('nav-instellingen-wrap').style.display = '';
+    if (rollen.has('admin') || rollen.has('dfk-sales')) document.getElementById('nav-sales-wrap').style.display = '';
   }
   updateLaatsteActief();
   setInterval(updateLaatsteActief, 5 * 60 * 1000);

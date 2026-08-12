@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/logos/dfk-enginges-icon.png">
+<title>DFK Sales</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;overflow-x:hidden}
+#header{background:#111827;color:#fff;padding:0 16px;display:flex;flex-direction:column;position:sticky;top:0;z-index:100}
+#header-top{display:flex;align-items:center;height:54px;gap:10px}
+#nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;border-top:1px solid #1f2937}
+#nav-tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;color:#9ca3af;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;flex-shrink:0;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab:hover{color:#fff}
+.tab.active{color:#60a5fa;border-bottom-color:#60a5fa}
+.logo{display:flex;align-items:center;gap:12px;cursor:pointer;order:-1}
+.logo-name{font-weight:800;font-size:18px;letter-spacing:-0.5px}
+.nav-wrap{position:relative;flex-shrink:0}
+.nav-toggle{background:#374151;border:none;color:#fff;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:16px;line-height:1;font-family:inherit;display:flex;align-items:center;gap:6px}
+.nav-toggle:hover{background:#4b5563}
+.nav-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#1f2937;border-radius:12px;min-width:210px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;display:none;overflow:hidden;border:1px solid #374151}
+.nav-dropdown.open{display:block}
+.nav-item{display:flex;align-items:center;padding:10px 16px;color:#d1d5db;cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:background .12s}
+.nav-item:hover{background:#374151;color:#fff}
+.nav-divider{height:1px;background:#374151;margin:4px 0}
+#main{max-width:960px;margin:0 auto;padding:24px 16px}
+.head-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.page-title{font-size:19px;font-weight:800;margin:0}
+.btn-groen{background:#059669;border:none;color:#fff;border-radius:8px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-groen:hover{background:#047857}
+.btn-groen:disabled{opacity:.5;cursor:not-allowed}
+.btn-blauw{background:#1d4ed8;border:none;color:#fff;border-radius:8px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-blauw:hover{background:#1e40af}
+.btn-rood{background:#dc2626;border:none;color:#fff;border-radius:8px;padding:7px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-rood:hover{background:#b91c1c}
+.btn-sm{background:none;border:1.5px solid #e5e7eb;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;color:#374151;font-weight:600;font-family:inherit;white-space:nowrap}
+.btn-sm:hover{border-color:#2563eb;color:#2563eb}
+.btn-outline{background:none;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#374151}
+.btn-outline:hover{border-color:#2563eb;color:#2563eb}
+.del-btn{background:none;border:none;cursor:pointer;color:#ef4444;font-size:15px;padding:2px 6px;border-radius:4px;font-family:inherit;line-height:1}
+.del-btn:hover{background:#fee2e2}
+.inp{display:block;width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;color:#111827;outline:none;transition:border-color .15s;background:#fff}
+.inp:focus{border-color:#2563eb}
+.sel{display:block;width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;color:#111827;outline:none;background:#fff;appearance:none;cursor:pointer}
+.sel:focus{border-color:#2563eb}
+.field{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);padding:22px;margin-bottom:16px}
+.actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.stat-val{font-size:22px;font-weight:800;color:#111827}
+.stat-lbl{font-size:12px;color:#6b7280;margin-top:2px}
+.zoek-bar{display:flex;gap:10px;margin-bottom:16px}
+.zoek-inp{flex:1;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 14px;font-size:14px;font-family:inherit;outline:none;background:#fff}
+.zoek-inp:focus{border-color:#2563eb}
+.verkoop-card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:box-shadow .15s;border-left:4px solid #e5e7eb}
+.verkoop-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.verkoop-card.open{border-left-color:#f59e0b}
+.verkoop-card.klaar{border-left-color:#10b981}
+.verkoop-card.gefactureerd{border-left-color:#6b7280}
+.vk-body{flex:1;min-width:0}
+.vk-klant{font-size:15px;font-weight:800;color:#111827}
+.vk-meta{font-size:12px;color:#6b7280;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.vk-totaal{font-size:15px;font-weight:800;color:#111827;white-space:nowrap;text-align:right}
+.vk-nr{font-size:11px;color:#9ca3af;margin-top:2px;text-align:right}
+.status-badge{border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.s-open{background:#fef3c7;color:#92400e}
+.s-klaar{background:#d1fae5;color:#065f46}
+.s-gefactureerd{background:#e5e7eb;color:#374151}
+.circuit-badge{background:#dbeafe;color:#1e40af;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.dag-header{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.dag-info{flex:1;min-width:180px}
+.dag-title{font-size:15px;font-weight:800;color:#111827}
+.dag-sub{font-size:12px;color:#9ca3af;margin-top:2px}
+.items-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.items-tbl th{text-align:left;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;border-bottom:2px solid #f3f4f6}
+.items-tbl td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.items-tbl tbody tr:last-child td{border-bottom:none}
+.items-tbl tbody tr:hover td{background:#f9fafb}
+.totalen{background:#f9fafb;border-radius:10px;padding:16px;margin-top:14px}
+.totaal-row{display:flex;justify-content:space-between;padding:3px 0;font-size:14px;color:#374151}
+.totaal-row.eindtotaal{font-size:16px;font-weight:800;color:#111827;border-top:2px solid #e5e7eb;margin-top:8px;padding-top:10px}
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;max-height:240px;overflow-y:auto}
+.ac-item{padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ac-item:hover{background:#eff6ff;color:#1d4ed8}
+.ac-item:last-child{border-bottom:none}
+.ac-sub{font-size:11px;color:#9ca3af;flex-shrink:0}
+.ac-nieuw{padding:10px 14px;cursor:pointer;font-size:14px;color:#059669;font-weight:600;border-top:1.5px solid #e5e7eb;background:#f0fdf4}
+.ac-nieuw:hover{background:#dcfce7}
+.detail-header{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);padding:20px;margin-bottom:16px}
+.detail-nr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px}
+.detail-klant{font-size:22px;font-weight:800;color:#111827}
+.detail-meta{font-size:13px;color:#6b7280;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.detail-acties{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+.add-form{background:#f9fafb;border-radius:10px;padding:16px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.add-form .field{flex:1;min-width:180px}
+.add-form .field-sm{flex:0 0 90px}
+.add-form .field-price{flex:0 0 110px}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin:20px 0 8px}
+.btab-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.btab{background:#e5e7eb;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#374151}
+.btab.active{background:#1d4ed8;color:#fff}
+.empty-state{background:#fff;border-radius:12px;text-align:center;padding:48px;color:#9ca3af;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
+#modal-overlay.open{display:flex}
+#modal-box{background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#modal-tekst{font-size:15px;color:#111827;line-height:1.5;margin-bottom:20px;white-space:pre-wrap}
+#modal-knoppen{display:flex;gap:10px;justify-content:flex-end}
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .dag-header{gap:10px}
+  .add-form{flex-direction:column}
+  .add-form .field,.add-form .field-sm,.add-form .field-price{flex:none;width:100%}
+  .items-tbl th:nth-child(3),.items-tbl td:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div id="header-top">
+    <div class="logo" onclick="window.location.href='/dfk-sales/'">
+      <img src="/logos/DFKLog.png" style="height:44px;object-fit:contain;display:block">
+      <span class="logo-name">DFK Sales</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <div class="nav-wrap">
+        <button class="nav-toggle" onclick="toggleNav()" style="display:flex;align-items:center;gap:6px">
+          <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="font-size:11px;opacity:.7">&#9660;</span>
+        </button>
+        <div class="nav-dropdown" id="nav-dropdown">
+          <div id="nav-engines-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/'">DFK Engines</button>
+            <div class="nav-divider"></div>
+          </div>
+          <div id="nav-logistics-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
+            <div class="nav-divider"></div>
+          </div>
+          <div id="nav-beheer-wrap" style="display:none">
+            <button class="nav-item" onclick="navigeer('beheer');toggleNav()">&#9881; Beheer</button>
+            <div class="nav-divider"></div>
+          </div>
+          <button class="nav-item" onclick="doLogout()">Afmelden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav id="nav-tabs">
+    <button class="tab" id="nav-vandaag" onclick="navigeer('vandaag')">Vandaag</button>
+    <button class="tab" id="nav-historiek" onclick="navigeer('historiek')">Historiek</button>
+  </nav>
+</header>
+
+<div id="main"><div style="text-align:center;padding:60px;color:#6b7280">&#9203; Laden...</div></div>
+
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-tekst"></div>
+    <div id="modal-knoppen"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
+
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt = n => '&#8364;' + (+(n||0)).toFixed(2).replace('.',',');
+const fmtDatum = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '&#8212;';
+const fmtDatumLang = d => d ? new Date(d+'T00:00:00').toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : '&#8212;';
+const fmtDt = d => d ? new Date(d).toLocaleString('nl-NL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '&#8212;';
+const vandaagStr = () => new Date().toISOString().split('T')[0];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let sb = null, gebruiker = null, gebruikerNaam = '', rollen = new Set();
+let verkopen = [], klanten = [], circuits = [], producten = [];
+let view = localStorage.getItem('sales_view') || 'vandaag';
+let huidigVerkoopId = null, huidigItems = [], huidigLog = [];
+let beheerSub = 'producten';
+let zoek = '';
+let dagDatum = localStorage.getItem('sales_datum') || vandaagStr();
+let dagCircuitId = localStorage.getItem('sales_circuit_id') || '';
+let dagCircuitNaam = localStorage.getItem('sales_circuit_naam') || '';
+let histFilter = { van:'', tot:'', circuit:'', klant:'', status:'' };
+let acKlantSel = null, acProductSel = null;
+let realtimeSub = null;
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function toonMelding(tekst){
+  return new Promise(r=>{
+    document.getElementById('modal-tekst').textContent = tekst;
+    document.getElementById('modal-knoppen').innerHTML = '<button class="btn-blauw" onclick="sluitModal()">OK</button>';
+    document.getElementById('modal-overlay').classList.add('open');
+    window._mRes = r;
+  });
+}
+function toonBevestiging(tekst){
+  return new Promise(r=>{
+    document.getElementById('modal-tekst').textContent = tekst;
+    document.getElementById('modal-knoppen').innerHTML =
+      '<button class="btn-outline" onclick="sluitModal(false)">Annuleren</button><button class="btn-rood" onclick="sluitModal(true)">Bevestigen</button>';
+    document.getElementById('modal-overlay').classList.add('open');
+    window._mRes = r;
+  });
+}
+function sluitModal(v){ document.getElementById('modal-overlay').classList.remove('open'); if(window._mRes){ window._mRes(v); window._mRes=null; } }
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
+document.addEventListener('click', e => { if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
+
+function updateNavActief(){
+  ['vandaag','historiek'].forEach(v => document.getElementById('nav-'+v)?.classList.toggle('active', view===v));
+}
+
+function navigeer(v, extra){
+  const vorigeView = view;
+  view = v;
+  if(v !== 'detail') localStorage.setItem('sales_view', v);
+  if(extra?.verkoopId) huidigVerkoopId = extra.verkoopId;
+  document.getElementById('nav-dropdown')?.classList.remove('open');
+  if(v !== 'detail' && vorigeView === 'detail'){ acKlantSel = null; acProductSel = null; zoek = ''; }
+  updateNavActief();
+  render();
+}
+
+async function doLogout(){ try{ await sb.auth.signOut(); }catch{} window.location.href='/'; }
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+async function laadAlles(){
+  const [v, k, c, p] = await Promise.all([
+    sb.from('verkopen').select('*').order('created_at',{ascending:false}),
+    sb.from('verkoop_klanten').select('*').eq('actief',true).order('naam'),
+    sb.from('circuits').select('*').eq('actief',true).order('volgorde'),
+    sb.from('producten').select('*').eq('actief',true).order('naam'),
+  ]);
+  verkopen = v.data||[]; klanten = k.data||[]; circuits = c.data||[]; producten = p.data||[];
+}
+
+async function laadVerkopen(){
+  const {data} = await sb.from('verkopen').select('*').order('created_at',{ascending:false});
+  verkopen = data||[];
+}
+
+async function laadVerkoopDetail(id){
+  const [items, log] = await Promise.all([
+    sb.from('verkoop_items').select('*').eq('verkoop_id',id).order('created_at'),
+    sb.from('verkoop_log').select('*').eq('verkoop_id',id).order('created_at',{ascending:false}).limit(30),
+  ]);
+  huidigItems = items.data||[]; huidigLog = log.data||[];
+}
+
+// ── BEREKENINGEN ──────────────────────────────────────────────────────────────
+function berekenTotalen(items){
+  let excl=0, btw=0;
+  items.forEach(i=>{ const b=i.aantal*(i.stukprijs||0); excl+=b; btw+=b*(i.btw_pct||21)/100; });
+  return { excl, btw, incl: excl+btw };
+}
+
+function btwGroepen(items){
+  const g={};
+  items.forEach(i=>{ const pct=i.btw_pct||21; const b=i.aantal*(i.stukprijs||0)*pct/100; g[pct]=(g[pct]||0)+b; });
+  return g;
+}
+
+async function updateVerkoopTotalen(verkoopId, localItems){
+  const items = localItems || huidigItems;
+  const t = berekenTotalen(items);
+  const rnd = x => Math.round(x*100)/100;
+  await sb.from('verkopen').update({totaal_excl:rnd(t.excl),totaal_btw:rnd(t.btw),totaal_incl:rnd(t.incl),updated_at:new Date().toISOString()}).eq('id',verkoopId);
+  const idx = verkopen.findIndex(v=>v.id===verkoopId);
+  if(idx>=0){ verkopen[idx].totaal_excl=rnd(t.excl); verkopen[idx].totaal_btw=rnd(t.btw); verkopen[idx].totaal_incl=rnd(t.incl); }
+}
+
+async function logActie(verkoopId, actie, details){
+  const entry = {verkoop_id:verkoopId, actie, details:details||null, door:gebruikerNaam||gebruiker.email};
+  await sb.from('verkoop_log').insert(entry);
+  huidigLog.unshift({...entry, created_at:new Date().toISOString()});
+}
+
+// ── VERKOPEN CRUD ─────────────────────────────────────────────────────────────
+async function maakNieuweVerkoop(e){
+  e.preventDefault();
+  const f = e.target;
+  const klantNaam = (acKlantSel?.naam || f.querySelector('#n-klant-inp').value).trim();
+  const klantId = acKlantSel?.id || null;
+  const circuitId = f.querySelector('#n-circuit').value || null;
+  const circuit = circuits.find(c=>c.id===circuitId);
+  const circuitNaam = circuit?.naam || '';
+  const datum = f.querySelector('#n-datum').value || vandaagStr();
+  const ref = f.querySelector('#n-ref').value.trim() || null;
+  if(!klantNaam){ await toonMelding('Voer een klantnaam in.'); return; }
+
+  const jaar = datum.substring(0,4);
+  const { count } = await sb.from('verkopen').select('*',{count:'exact',head:true}).like('nummer',`${jaar}-%`);
+  const nummer = `${jaar}-${String((count||0)+1).padStart(5,'0')}`;
+
+  const {data,error} = await sb.from('verkopen').insert({
+    nummer, klant_naam:klantNaam, klant_id:klantId,
+    circuit_id:circuitId||null, circuit_naam:circuitNaam||null,
+    datum, referentie:ref, status:'open',
+    aangemaakt_door:gebruikerNaam||gebruiker.email,
+    totaal_excl:0, totaal_btw:0, totaal_incl:0,
+  }).select().single();
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+
+  huidigItems = []; huidigLog = [];
+  await logActie(data.id, 'verkoop aangemaakt', `${klantNaam}${circuitNaam?' — '+circuitNaam:''}`);
+  verkopen.unshift(data);
+
+  if(circuitId){ localStorage.setItem('sales_circuit_id',circuitId); dagCircuitId=circuitId; }
+  if(circuitNaam){ localStorage.setItem('sales_circuit_naam',circuitNaam); dagCircuitNaam=circuitNaam; }
+  localStorage.setItem('sales_datum',datum); dagDatum=datum;
+
+  acKlantSel=null;
+  view='detail'; huidigVerkoopId=data.id;
+  updateNavActief(); render();
+}
+
+async function voegItemToe(e){
+  e.preventDefault();
+  const f = e.target;
+  const naam = (acProductSel?.naam || f.querySelector('#i-naam-inp').value).trim();
+  if(!naam){ await toonMelding('Voer een productnaam in.'); return; }
+  const aantal = Math.max(1,parseInt(f.querySelector('#i-aantal').value)||1);
+  const stukprijs = acProductSel ? (acProductSel.verkoopprijs||0) : (parseFloat(f.querySelector('#i-prijs')?.value)||0);
+  const btwPct = acProductSel ? (acProductSel.btw_pct||21) : 21;
+
+  const {data,error} = await sb.from('verkoop_items').insert({
+    verkoop_id:huidigVerkoopId,
+    product_id:acProductSel?.id||null,
+    product_naam:naam,
+    artikelnummer:acProductSel?.artikelnummer||null,
+    categorie:acProductSel?.categorie||null,
+    aantal, stukprijs, btw_pct:btwPct,
+    totaal:Math.round(aantal*stukprijs*100)/100,
+    toegevoegd_door:gebruikerNaam||gebruiker.email,
+  }).select().single();
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+
+  huidigItems.push(data);
+  await updateVerkoopTotalen(huidigVerkoopId);
+  await logActie(huidigVerkoopId,'product toegevoegd',`${aantal}× ${naam} @ €${stukprijs.toFixed(2)}`);
+
+  acProductSel=null;
+  f.querySelector('#i-naam-inp').value='';
+  f.querySelector('#i-aantal').value='1';
+  const pi = f.querySelector('#i-prijs'); if(pi) pi.value='';
+  document.getElementById('ac-product-drop').style.display='none';
+  document.getElementById('i-prijs-wrap').style.display='none';
+  render();
+  setTimeout(()=>document.getElementById('i-naam-inp')?.focus(),50);
+}
+
+async function verwijderItem(id){
+  const item = huidigItems.find(i=>i.id===id);
+  if(!await toonBevestiging(`${item?.product_naam||'item'} verwijderen uit deze verkoop?`)) return;
+  const {error} = await sb.from('verkoop_items').delete().eq('id',id);
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  huidigItems = huidigItems.filter(i=>i.id!==id);
+  await updateVerkoopTotalen(huidigVerkoopId);
+  if(item) await logActie(huidigVerkoopId,'product verwijderd',`${item.aantal}× ${item.product_naam}`);
+  render();
+}
+
+async function sluitVerkoop(){
+  const v = verkopen.find(x=>x.id===huidigVerkoopId);
+  if(!v) return;
+  if(!await toonBevestiging(`Verkoop #${v.nummer} — ${v.klant_naam}\n\nKlaarstellen voor facturatie? U kunt dit later heropenen indien nodig.`)) return;
+  await sb.from('verkopen').update({status:'klaar',updated_at:new Date().toISOString()}).eq('id',huidigVerkoopId);
+  v.status='klaar';
+  await logActie(huidigVerkoopId,'klaar voor facturatie','');
+  render();
+}
+
+async function herOpenVerkoop(){
+  const v = verkopen.find(x=>x.id===huidigVerkoopId);
+  if(!v) return;
+  await sb.from('verkopen').update({status:'open',updated_at:new Date().toISOString()}).eq('id',huidigVerkoopId);
+  v.status='open';
+  await logActie(huidigVerkoopId,'heropend','');
+  render();
+}
+
+async function verwijderVerkoop(){
+  const v = verkopen.find(x=>x.id===huidigVerkoopId);
+  if(!await toonBevestiging(`Verkoop #${v?.nummer} van ${v?.klant_naam} permanent verwijderen?\n\nAlle items worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.`)) return;
+  const {error} = await sb.from('verkopen').delete().eq('id',huidigVerkoopId);
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  verkopen = verkopen.filter(x=>x.id!==huidigVerkoopId);
+  huidigVerkoopId=null; huidigItems=[]; huidigLog=[];
+  navigeer('vandaag');
+}
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
+function filterKlanten(q){
+  const drop = document.getElementById('ac-klant-drop');
+  if(!drop) return;
+  if(!q.trim()){ drop.style.display='none'; return; }
+  const term = q.toLowerCase();
+  const hits = klanten.filter(k=>k.naam.toLowerCase().includes(term)||(k.team||'').toLowerCase().includes(term)).slice(0,8);
+  drop.innerHTML = hits.map(k=>
+    `<div class="ac-item" onclick="selectKlant('${k.id}')"><span>${esc(k.naam)}${k.team?` <span style="color:#9ca3af;font-size:11px">${esc(k.team)}</span>`:''}</span></div>`
+  ).join('') + `<div class="ac-nieuw" onclick="selectNieuweKlant(document.getElementById('n-klant-inp').value)">&#43; Nieuwe klant aanmaken</div>`;
+  drop.style.display='block';
+}
+
+function selectKlant(id){
+  const k = klanten.find(x=>x.id===id);
+  if(!k) return;
+  acKlantSel=k;
+  const el = document.getElementById('n-klant-inp');
+  if(el) el.value = k.naam + (k.team?` (${k.team})`:'');
+  document.getElementById('ac-klant-drop').style.display='none';
+  document.getElementById('n-circuit')?.focus();
+}
+
+async function selectNieuweKlant(naam){
+  const n = naam.trim();
+  if(!n) return;
+  const {data,error} = await sb.from('verkoop_klanten').insert({naam:n,actief:true}).select().single();
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam));
+  acKlantSel=data;
+  const el = document.getElementById('n-klant-inp');
+  if(el) el.value = data.naam;
+  document.getElementById('ac-klant-drop').style.display='none';
+  document.getElementById('n-circuit')?.focus();
+}
+
+function filterProducten(q){
+  const drop = document.getElementById('ac-product-drop');
+  if(!drop) return;
+  if(!q.trim()){ drop.style.display='none'; acProductSel=null; return; }
+  const term = q.toLowerCase();
+  const hits = producten.filter(p=>
+    p.naam.toLowerCase().includes(term)||(p.artikelnummer||'').toLowerCase().includes(term)||(p.categorie||'').toLowerCase().includes(term)
+  ).slice(0,10);
+  drop.innerHTML = hits.map(p=>`
+    <div class="ac-item" onclick="selectProduct('${p.id}')">
+      <div><div style="font-weight:600">${esc(p.naam)}</div>${p.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${esc(p.artikelnummer)}</div>`:''}</div>
+      <span class="ac-sub">${fmt(p.verkoopprijs||0)} excl.</span>
+    </div>`).join('') +
+    `<div class="ac-nieuw" onclick="selectVrijProduct(document.getElementById('i-naam-inp').value)">&#43; Vrij product (geen catalogus)</div>`;
+  drop.style.display='block';
+}
+
+function selectProduct(id){
+  const p = producten.find(x=>x.id===id);
+  if(!p) return;
+  acProductSel=p;
+  const el = document.getElementById('i-naam-inp');
+  if(el) el.value=p.naam;
+  document.getElementById('ac-product-drop').style.display='none';
+  document.getElementById('i-prijs-wrap').style.display='none';
+  setTimeout(()=>{ const a=document.getElementById('i-aantal'); if(a){a.focus();a.select();} },30);
+}
+
+function selectVrijProduct(naam){
+  acProductSel=null;
+  const el = document.getElementById('i-naam-inp');
+  if(el) el.value=naam.trim();
+  document.getElementById('ac-product-drop').style.display='none';
+  document.getElementById('i-prijs-wrap').style.display='flex';
+  setTimeout(()=>document.getElementById('i-prijs')?.focus(),30);
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.ac-wrap')){
+    document.getElementById('ac-klant-drop') && (document.getElementById('ac-klant-drop').style.display='none');
+    document.getElementById('ac-product-drop') && (document.getElementById('ac-product-drop').style.display='none');
+  }
+});
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  const el = document.getElementById('main');
+  if(view==='vandaag')      el.innerHTML = renderVandaag();
+  else if(view==='nieuw')   el.innerHTML = renderNieuw();
+  else if(view==='detail')  el.innerHTML = renderDetail();
+  else if(view==='historiek') el.innerHTML = renderHistoriek();
+  else if(view==='beheer')  el.innerHTML = renderBeheer();
+  updateNavActief();
+  bindForms();
+}
+
+function statusBadge(s){
+  const m={open:'s-open',klaar:'s-klaar',gefactureerd:'s-gefactureerd'};
+  const l={open:'Open',klaar:'Klaar voor facturatie',gefactureerd:'Gefactureerd'};
+  return `<span class="status-badge ${m[s]||'s-open'}">${l[s]||esc(s)}</span>`;
+}
+
+function verkoopKaartHtml(v){
+  return `<div class="verkoop-card ${v.status}" onclick="openVerkoop('${v.id}')">
+    <div class="vk-body">
+      <div class="vk-klant">${esc(v.klant_naam)}</div>
+      <div class="vk-meta">
+        ${v.circuit_naam?`<span class="circuit-badge">&#128205; ${esc(v.circuit_naam)}</span>`:''}
+        <span>&#128197; ${fmtDatum(v.datum)}</span>
+        ${v.referentie?`<span style="font-style:italic">&#128221; ${esc(v.referentie)}</span>`:''}
+        ${statusBadge(v.status)}
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div class="vk-totaal">${fmt(v.totaal_incl)}</div>
+      <div class="vk-nr">#${esc(v.nummer)}</div>
+    </div>
+  </div>`;
+}
+
+function renderVandaag(){
+  const vandaag = verkopen.filter(v=>v.datum===dagDatum);
+  const gefilterd = zoek ? vandaag.filter(v=>
+    v.klant_naam.toLowerCase().includes(zoek.toLowerCase()) ||
+    v.nummer.toLowerCase().includes(zoek.toLowerCase()) ||
+    (v.referentie||'').toLowerCase().includes(zoek.toLowerCase())
+  ) : vandaag;
+  const aantalOpen = vandaag.filter(v=>v.status==='open').length;
+  const aantalKlaar = vandaag.filter(v=>v.status==='klaar').length;
+  const omzetIncl = vandaag.reduce((s,v)=>s+(v.totaal_incl||0),0);
+  const circuitOpts = circuits.map(c=>`<option value="${c.id}"${c.id===dagCircuitId?' selected':''}>${esc(c.naam)}</option>`).join('');
+
+  return `
+  <div class="dag-header">
+    <div class="dag-info">
+      <div class="dag-title">&#128197; ${fmtDatumLang(dagDatum)}</div>
+      <div class="dag-sub">${dagCircuitNaam||'Geen circuit geselecteerd'}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="date" class="inp" style="width:auto" value="${dagDatum}" onchange="setDagDatum(this.value)">
+      <select class="sel" style="width:auto;min-width:130px" onchange="setDagCircuit(this.value,this.options[this.selectedIndex].text)">
+        <option value="">Circuit...</option>${circuitOpts}
+      </select>
+    </div>
+    <button class="btn-groen" onclick="navigeer('nieuw')" style="font-size:15px;padding:10px 22px">&#43; Nieuwe verkoop</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-val">${vandaag.length}</div><div class="stat-lbl">Verkopen</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${aantalOpen}</div><div class="stat-lbl">Open</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#10b981">${aantalKlaar}</div><div class="stat-lbl">Klaar</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#1d4ed8;font-size:18px">${fmt(omzetIncl)}</div><div class="stat-lbl">Omzet incl. BTW</div></div>
+  </div>
+
+  ${vandaag.length > 0 ? `<div class="zoek-bar">
+    <input class="zoek-inp" placeholder="&#128269; Zoek op klant, nummer, referentie..." value="${esc(zoek)}" oninput="zoek=this.value;render()">
+    ${zoek?`<button class="btn-sm" onclick="zoek='';render()">&times; Wis</button>`:''}
+  </div>` : ''}
+
+  ${vandaag.length === 0 ? `
+    <div class="empty-state">
+      <div style="font-size:36px;margin-bottom:12px">&#128230;</div>
+      <div style="font-size:16px;font-weight:700;color:#374151;margin-bottom:8px">Nog geen verkopen vandaag</div>
+      <p style="font-size:13px">Start een nieuwe verkoop wanneer een klant arriveert.</p>
+      <button class="btn-groen" onclick="navigeer('nieuw')" style="margin-top:18px;font-size:15px;padding:10px 24px">&#43; Nieuwe verkoop starten</button>
+    </div>` :
+  gefilterd.length === 0 ? `<div class="empty-state"><div style="font-weight:700">Geen resultaten voor "${esc(zoek)}"</div></div>` :
+  gefilterd.map(verkoopKaartHtml).join('')}`;
+}
+
+function setDagDatum(v){ dagDatum=v; localStorage.setItem('sales_datum',v); render(); }
+function setDagCircuit(id, naam){
+  const c = circuits.find(x=>x.id===id);
+  dagCircuitId=id; dagCircuitNaam=c?.naam||naam||'';
+  localStorage.setItem('sales_circuit_id',id);
+  localStorage.setItem('sales_circuit_naam',dagCircuitNaam);
+  render();
+}
+
+function openVerkoop(id){
+  huidigVerkoopId=id; huidigItems=[]; huidigLog=[];
+  view='detail'; updateNavActief();
+  document.getElementById('main').innerHTML='<div style="text-align:center;padding:60px;color:#6b7280">&#9203; Laden...</div>';
+  laadVerkoopDetail(id).then(()=>render());
+}
+
+function renderNieuw(){
+  const circuitOpts = circuits.map(c=>`<option value="${c.id}"${c.id===dagCircuitId?' selected':''}>${esc(c.naam)}</option>`).join('');
+  return `
+  <div class="head-row">
+    <button class="btn-sm" onclick="navigeer('vandaag')">&larr; Terug</button>
+    <h1 class="page-title">&#43; Nieuwe verkoop</h1>
+  </div>
+  <div class="form-card">
+    <form id="form-nieuw">
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="field" style="grid-column:1/-1">
+          <label class="field-label">Klant *</label>
+          <div class="ac-wrap">
+            <input class="inp" id="n-klant-inp" placeholder="Zoek bestaande klant of typ nieuwe naam..." autocomplete="off" oninput="filterKlanten(this.value)" style="font-size:15px;padding:10px 14px">
+            <div class="ac-drop" id="ac-klant-drop" style="display:none"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Circuit</label>
+          <select class="sel" id="n-circuit">
+            <option value="">Kies circuit...</option>${circuitOpts}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Datum</label>
+          <input class="inp" type="date" id="n-datum" value="${dagDatum}">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label class="field-label">Referentie / opmerking (optioneel)</label>
+          <input class="inp" id="n-ref" placeholder="bv. Kart #12, Race 3, Race Team..." autocomplete="off">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-groen" type="submit" style="font-size:15px;padding:10px 24px">Verkoop starten &#8594;</button>
+        <button class="btn-outline" type="button" onclick="navigeer('vandaag')">Annuleren</button>
+      </div>
+    </form>
+  </div>`;
+}
+
+function renderDetail(){
+  const v = verkopen.find(x=>x.id===huidigVerkoopId);
+  if(!v) return renderVandaag();
+  const isOpen = v.status==='open';
+  const t = berekenTotalen(huidigItems);
+  const groepen = btwGroepen(huidigItems);
+
+  const itemRijen = huidigItems.length === 0 ?
+    `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:28px;font-size:13px">Nog geen producten — voeg het eerste product toe hierboven</td></tr>` :
+    huidigItems.map(i=>`<tr>
+      <td>
+        <div style="font-weight:600">${esc(i.product_naam)}</div>
+        ${i.categorie||i.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${[i.categorie,i.artikelnummer].filter(Boolean).map(esc).join(' · ')}</div>`:''}
+      </td>
+      <td style="text-align:center;font-weight:600">${i.aantal}</td>
+      <td style="text-align:right">${fmt(i.stukprijs)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(i.aantal*(i.stukprijs||0))}</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${isOpen?`<button class="del-btn" onclick="verwijderItem('${i.id}')" title="Verwijderen">&times;</button>`:''}
+      </td>
+    </tr>`).join('');
+
+  const btwHtml = Object.entries(groepen).sort(([a],[b])=>+b-+a)
+    .map(([pct,bedrag])=>`<div class="totaal-row"><span>BTW ${pct}%</span><span>${fmt(bedrag)}</span></div>`).join('');
+
+  return `
+  <div class="head-row">
+    <button class="btn-sm" onclick="navigeer('vandaag')">&larr; Overzicht</button>
+  </div>
+
+  <div class="detail-header">
+    <div class="detail-nr">Verkoop #${esc(v.nummer)}</div>
+    <div class="detail-klant">${esc(v.klant_naam)}</div>
+    <div class="detail-meta">
+      ${v.circuit_naam?`<span class="circuit-badge">&#128205; ${esc(v.circuit_naam)}</span>`:''}
+      <span>&#128197; ${fmtDatum(v.datum)}</span>
+      ${v.referentie?`<span>&#128221; ${esc(v.referentie)}</span>`:''}
+      ${statusBadge(v.status)}
+    </div>
+    <div class="detail-acties">
+      ${isOpen
+        ? `<button class="btn-groen" onclick="sluitVerkoop()" style="font-size:14px">&#10003; Klaar voor facturatie</button>`
+        : `<button class="btn-sm" onclick="herOpenVerkoop()">&#8635; Heropenen</button>`}
+      ${rollen.has('admin')?`<button class="btn-sm" style="color:#dc2626;border-color:#fca5a5" onclick="verwijderVerkoop()">&#128465; Verwijderen</button>`:''}
+    </div>
+  </div>
+
+  ${isOpen ? `
+  <div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:12px">&#43; Product toevoegen</div>
+    <form id="form-item">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:200px">
+          <label class="field-label">Product</label>
+          <div class="ac-wrap">
+            <input class="inp" id="i-naam-inp" placeholder="Typ productnaam of artikelnummer..." autocomplete="off" oninput="filterProducten(this.value)" style="font-size:14px">
+            <div class="ac-drop" id="ac-product-drop" style="display:none"></div>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 80px">
+          <label class="field-label">Aantal</label>
+          <input class="inp" id="i-aantal" type="number" min="1" value="1" style="text-align:center;font-size:16px;font-weight:700">
+        </div>
+        <div class="field" id="i-prijs-wrap" style="display:none;flex:0 0 120px">
+          <label class="field-label">Prijs excl. BTW</label>
+          <input class="inp" id="i-prijs" type="number" min="0" step="0.01" placeholder="0,00">
+        </div>
+        <button class="btn-blauw" type="submit" style="flex-shrink:0;align-self:flex-end;padding:9px 20px">&#43; Toevoegen</button>
+      </div>
+    </form>
+  </div>` : ''}
+
+  <div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Producten (${huidigItems.length})</div>
+    <div style="overflow-x:auto">
+      <table class="items-tbl">
+        <thead><tr>
+          <th>Product</th>
+          <th style="text-align:center">Aantal</th>
+          <th style="text-align:right">Prijs excl.</th>
+          <th style="text-align:right">Totaal excl.</th>
+          <th style="width:32px"></th>
+        </tr></thead>
+        <tbody>${itemRijen}</tbody>
+      </table>
+    </div>
+    <div class="totalen">
+      <div class="totaal-row"><span>Subtotaal excl. BTW</span><span>${fmt(t.excl)}</span></div>
+      ${btwHtml}
+      <div class="totaal-row eindtotaal"><span>Totaal incl. BTW</span><span>${fmt(t.incl)}</span></div>
+    </div>
+  </div>
+
+  ${huidigLog.length ? `
+  <div class="section-label">&#128203; Activiteitenlog</div>
+  <div class="form-card">
+    ${huidigLog.map(l=>`
+      <div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;align-items:baseline">
+        <span style="color:#9ca3af;white-space:nowrap;flex-shrink:0;font-size:11px">${fmtDt(l.created_at)}</span>
+        <span><strong>${esc(l.door)}</strong> &mdash; ${esc(l.actie)}${l.details?': <span style="color:#6b7280">'+esc(l.details)+'</span>':''}</span>
+      </div>`).join('')}
+  </div>` : ''}`;
+}
+
+function renderHistoriek(){
+  const circuitOpts = circuits.map(c=>`<option value="${c.id}"${histFilter.circuit===c.id?' selected':''}>${esc(c.naam)}</option>`).join('');
+  let lijst = [...verkopen];
+  if(histFilter.van) lijst = lijst.filter(v=>v.datum>=histFilter.van);
+  if(histFilter.tot) lijst = lijst.filter(v=>v.datum<=histFilter.tot);
+  if(histFilter.circuit) lijst = lijst.filter(v=>v.circuit_id===histFilter.circuit);
+  if(histFilter.klant) lijst = lijst.filter(v=>v.klant_naam.toLowerCase().includes(histFilter.klant.toLowerCase()));
+  if(histFilter.status) lijst = lijst.filter(v=>v.status===histFilter.status);
+
+  const omzet = lijst.reduce((s,v)=>s+(v.totaal_incl||0),0);
+
+  return `
+  <div class="head-row">
+    <h1 class="page-title">&#128203; Historiek</h1>
+    <span style="color:#6b7280;font-size:14px;margin-left:auto">${lijst.length} verkoop/verkopen</span>
+  </div>
+  <div class="form-card">
+    <div class="form-grid">
+      <div class="field">
+        <label class="field-label">Van datum</label>
+        <input class="inp" type="date" value="${histFilter.van}" onchange="histFilter.van=this.value;render()">
+      </div>
+      <div class="field">
+        <label class="field-label">Tot datum</label>
+        <input class="inp" type="date" value="${histFilter.tot}" onchange="histFilter.tot=this.value;render()">
+      </div>
+      <div class="field">
+        <label class="field-label">Circuit</label>
+        <select class="sel" onchange="histFilter.circuit=this.value;render()">
+          <option value="">Alle circuits</option>${circuitOpts}
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Klant</label>
+        <input class="inp" placeholder="Zoek op klantnaam..." value="${esc(histFilter.klant)}" oninput="histFilter.klant=this.value;render()">
+      </div>
+      <div class="field">
+        <label class="field-label">Status</label>
+        <select class="sel" onchange="histFilter.status=this.value;render()">
+          <option value="">Alle statussen</option>
+          <option value="open"${histFilter.status==='open'?' selected':''}>Open</option>
+          <option value="klaar"${histFilter.status==='klaar'?' selected':''}>Klaar voor facturatie</option>
+          <option value="gefactureerd"${histFilter.status==='gefactureerd'?' selected':''}>Gefactureerd</option>
+        </select>
+      </div>
+      <div class="field" style="align-self:flex-end">
+        <button class="btn-sm" onclick="histFilter={van:'',tot:'',circuit:'',klant:'',status:''};render()">&#8635; Reset filters</button>
+      </div>
+    </div>
+  </div>
+
+  ${lijst.length === 0 ? `<div class="empty-state"><div style="font-weight:700;font-size:15px">Geen resultaten</div></div>` : `
+  <div class="form-card">
+    <div style="overflow-x:auto">
+      <table class="items-tbl">
+        <thead><tr>
+          <th>Nummer</th><th>Klant</th><th>Circuit</th><th>Datum</th>
+          <th style="text-align:right">Totaal incl.</th><th>Status</th>
+        </tr></thead>
+        <tbody>${lijst.map(v=>`<tr style="cursor:pointer" onclick="openVerkoop('${v.id}')">
+          <td style="font-weight:700;color:#2563eb">#${esc(v.nummer)}</td>
+          <td style="font-weight:600">${esc(v.klant_naam)}</td>
+          <td>${v.circuit_naam?`<span class="circuit-badge">${esc(v.circuit_naam)}</span>`:''}</td>
+          <td>${fmtDatum(v.datum)}</td>
+          <td style="text-align:right;font-weight:700">${fmt(v.totaal_incl)}</td>
+          <td>${statusBadge(v.status)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;justify-content:space-between;font-size:13px;color:#6b7280">
+      <span>${lijst.length} verkopen</span>
+      <span>Totaal incl. BTW: <strong style="color:#111827">${fmt(omzet)}</strong></span>
+    </div>
+  </div>`}`;
+}
+
+function renderBeheer(){
+  if(!rollen.has('admin')) return `<div class="empty-state"><div style="font-size:32px;margin-bottom:12px">&#128274;</div><div style="font-weight:700;font-size:15px">Geen toegang</div></div>`;
+  return `
+  <div class="head-row"><h1 class="page-title">&#9881; Beheer</h1></div>
+  <div class="btab-row">
+    <button class="btab ${beheerSub==='producten'?'active':''}" onclick="beheerSub='producten';render()">Producten</button>
+    <button class="btab ${beheerSub==='circuits'?'active':''}" onclick="beheerSub='circuits';render()">Circuits</button>
+    <button class="btab ${beheerSub==='klanten'?'active':''}" onclick="beheerSub='klanten';render()">Klanten</button>
+  </div>
+  ${beheerSub==='producten' ? renderBeheerProducten() : beheerSub==='circuits' ? renderBeheerCircuits() : renderBeheerKlanten()}`;
+}
+
+function renderBeheerProducten(){
+  const catOpts = ['Onderdelen','Banden','Olie','Gereedschap','Kartmateriaal','Accessoires','Verbruiksartikelen','Diensten','Algemeen'].map(c=>`<option value="${c}">${c}</option>`).join('');
+  return `
+  <div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuw product toevoegen</div>
+    <form id="form-product">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field" style="grid-column:1/-1">
+          <label class="field-label">Productnaam *</label>
+          <input class="inp" id="p-naam" placeholder="bv. Remblok X30, Stuurstang..." required autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label">Artikelnummer</label>
+          <input class="inp" id="p-art" placeholder="bv. RB-X30-001" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label">Categorie</label>
+          <select class="sel" id="p-cat">${catOpts}</select>
+        </div>
+        <div class="field">
+          <label class="field-label">Verkoopprijs excl. BTW (&#8364;)</label>
+          <input class="inp" id="p-prijs" type="number" min="0" step="0.01" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label class="field-label">BTW percentage</label>
+          <select class="sel" id="p-btw">
+            <option value="21">21%</option><option value="6">6%</option><option value="0">0%</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-blauw" type="submit">&#43; Product toevoegen</button>
+    </form>
+  </div>
+  ${producten.length ? `<div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Catalogus (${producten.length})</div>
+    <div style="overflow-x:auto">
+      <table class="items-tbl">
+        <thead><tr><th>Naam</th><th>Art.nr.</th><th>Categorie</th><th style="text-align:right">Prijs excl.</th><th style="text-align:right">BTW</th><th></th></tr></thead>
+        <tbody>${producten.map(p=>`<tr>
+          <td style="font-weight:600">${esc(p.naam)}</td>
+          <td style="color:#6b7280">${esc(p.artikelnummer||'')}</td>
+          <td><span style="background:#e5e7eb;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600">${esc(p.categorie||'')}</span></td>
+          <td style="text-align:right;font-weight:700">${fmt(p.verkoopprijs||0)}</td>
+          <td style="text-align:right;color:#6b7280">${p.btw_pct||21}%</td>
+          <td><button class="del-btn" onclick="verwijderProduct('${p.id}')">&times;</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen producten in catalogus</div><p style="margin-top:8px;font-size:13px">Voeg producten toe om ze snel te kunnen opzoeken bij een verkoop.</p></div>`}`;
+}
+
+function renderBeheerCircuits(){
+  return `
+  <div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuw circuit</div>
+    <form id="form-circuit" style="display:flex;gap:10px;align-items:flex-end">
+      <div class="field" style="flex:1"><label class="field-label">Naam</label><input class="inp" id="c-naam" placeholder="bv. Genk" required autocomplete="off"></div>
+      <button class="btn-blauw" type="submit">&#43; Toevoegen</button>
+    </form>
+  </div>
+  ${circuits.length ? `<div class="form-card">
+    <table class="items-tbl"><thead><tr><th>Circuit</th><th></th></tr></thead>
+    <tbody>${circuits.map(c=>`<tr><td style="font-weight:600">&#128205; ${esc(c.naam)}</td><td style="text-align:right"><button class="del-btn" onclick="verwijderCircuit('${c.id}')">&times;</button></td></tr>`).join('')}</tbody></table>
+  </div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen circuits</div></div>`}`;
+}
+
+function renderBeheerKlanten(){
+  return `
+  <div class="form-card">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuwe klant</div>
+    <form id="form-klant">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field"><label class="field-label">Naam *</label><input class="inp" id="k-naam" placeholder="Klantnaam" required autocomplete="off"></div>
+        <div class="field"><label class="field-label">Team</label><input class="inp" id="k-team" placeholder="Teamnaam" autocomplete="off"></div>
+        <div class="field"><label class="field-label">E-mail</label><input class="inp" id="k-email" type="email" placeholder="klant@email.com" autocomplete="off"></div>
+        <div class="field"><label class="field-label">Telefoon</label><input class="inp" id="k-tel" placeholder="+32 ..." autocomplete="off"></div>
+      </div>
+      <button class="btn-blauw" type="submit">&#43; Klant toevoegen</button>
+    </form>
+  </div>
+  ${klanten.length ? `<div class="form-card">
+    <div style="overflow-x:auto">
+      <table class="items-tbl">
+        <thead><tr><th>Naam</th><th>Team</th><th>E-mail</th><th>Telefoon</th><th></th></tr></thead>
+        <tbody>${klanten.map(k=>`<tr>
+          <td style="font-weight:600">${esc(k.naam)}</td>
+          <td style="color:#6b7280">${esc(k.team||'')}</td>
+          <td style="color:#6b7280">${esc(k.email||'')}</td>
+          <td style="color:#6b7280">${esc(k.telefoon||'')}</td>
+          <td><button class="del-btn" onclick="verwijderKlant('${k.id}')">&times;</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen klanten</div><p style="margin-top:8px;font-size:13px">Klanten worden ook automatisch aangemaakt wanneer u een nieuwe verkoop start.</p></div>`}`;
+}
+
+// ── BEHEER CRUD ──────────────────────────────────────────────────────────────
+async function voegProductToe(e){
+  e.preventDefault(); const f=e.target;
+  const naam=f.querySelector('#p-naam').value.trim();
+  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,categorie:f.querySelector('#p-cat').value,verkoopprijs:parseFloat(f.querySelector('#p-prijs').value)||0,btw_pct:parseFloat(f.querySelector('#p-btw').value)||21,actief:true}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  producten.push(data); producten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
+}
+async function verwijderProduct(id){
+  if(!await toonBevestiging('Product verwijderen uit catalogus?')) return;
+  await sb.from('producten').update({actief:false}).eq('id',id);
+  producten=producten.filter(p=>p.id!==id); render();
+}
+async function voegCircuitToe(e){
+  e.preventDefault();
+  const naam=e.target.querySelector('#c-naam').value.trim();
+  const {data,error}=await sb.from('circuits').insert({naam,actief:true,volgorde:circuits.length}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  circuits.push(data); e.target.reset(); render();
+}
+async function verwijderCircuit(id){
+  if(!await toonBevestiging('Circuit verwijderen?')) return;
+  await sb.from('circuits').update({actief:false}).eq('id',id);
+  circuits=circuits.filter(c=>c.id!==id); render();
+}
+async function voegKlantToe(e){
+  e.preventDefault(); const f=e.target;
+  const {data,error}=await sb.from('verkoop_klanten').insert({naam:f.querySelector('#k-naam').value.trim(),team:f.querySelector('#k-team').value.trim()||null,email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
+  if(error){await toonMelding('Fout: '+error.message);return;}
+  klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
+}
+async function verwijderKlant(id){
+  if(!await toonBevestiging('Klant verwijderen?')) return;
+  await sb.from('verkoop_klanten').update({actief:false}).eq('id',id);
+  klanten=klanten.filter(k=>k.id!==id); render();
+}
+
+// ── FORMS BIND ────────────────────────────────────────────────────────────────
+function bindForms(){
+  const fn=document.getElementById('form-nieuw');    if(fn) fn.onsubmit=maakNieuweVerkoop;
+  const fi=document.getElementById('form-item');     if(fi) fi.onsubmit=voegItemToe;
+  const fp=document.getElementById('form-product');  if(fp) fp.onsubmit=voegProductToe;
+  const fc=document.getElementById('form-circuit');  if(fc) fc.onsubmit=voegCircuitToe;
+  const fk=document.getElementById('form-klant');    if(fk) fk.onsubmit=voegKlantToe;
+}
+
+// ── REALTIME ──────────────────────────────────────────────────────────────────
+function setupRealtime(){
+  if(realtimeSub) sb.removeChannel(realtimeSub);
+  realtimeSub = sb.channel('dfk-sales-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'verkopen'}, async ()=>{ await laadVerkopen(); render(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'verkoop_items'}, async ()=>{
+      if(huidigVerkoopId && view==='detail'){ await laadVerkoopDetail(huidigVerkoopId); render(); }
+    })
+    .subscribe();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init(){
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ window.location.href='/'; return; }
+  gebruiker = session.user;
+
+  const [rolRes, profRes] = await Promise.all([
+    sb.from('user_roles').select('rol').eq('user_email',gebruiker.email),
+    sb.from('profiles').select('naam').eq('email',gebruiker.email).single()
+  ]);
+  rollen = new Set((rolRes.data||[]).map(r=>r.rol));
+
+  if(!rollen.has('dfk-sales') && !rollen.has('admin')){
+    document.getElementById('main').innerHTML = `<div class="empty-state">
+      <div style="font-size:36px;margin-bottom:12px">&#128274;</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">Geen toegang tot DFK Sales</div>
+      <p style="font-size:13px">Vraag een beheerder om de rol <strong>dfk-sales</strong> toe te voegen aan uw account.</p>
+    </div>`;
+    return;
+  }
+
+  gebruikerNaam = profRes.data?.naam || gebruiker.email.split('@')[0];
+  document.getElementById('header-naam').textContent = gebruikerNaam;
+
+  if(rollen.has('admin')||rollen.has('dfk-engines')) document.getElementById('nav-engines-wrap').style.display='';
+  if(rollen.has('admin')||rollen.has('dfk-logistics')) document.getElementById('nav-logistics-wrap').style.display='';
+  if(rollen.has('admin')) document.getElementById('nav-beheer-wrap').style.display='';
+
+  await laadAlles();
+  render();
+  setupRealtime();
+  sb.from('profiles').update({last_active:new Date().toISOString()}).eq('email',gebruiker.email);
+}
+init();
+</script>
+</body>
+</html>
