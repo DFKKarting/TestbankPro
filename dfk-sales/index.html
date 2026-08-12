@@ -241,7 +241,7 @@ async function laadAlles(){
   const [v, k, c, p] = await Promise.all([
     sb.from('verkopen').select('*').order('created_at',{ascending:false}),
     sb.from('verkoop_klanten').select('*').eq('actief',true).order('naam'),
-    sb.from('circuits').select('*').eq('actief',true).order('volgorde'),
+    sb.from('circuits').select('*').eq('actief',true).order('naam'),
     sb.from('producten').select('*').eq('actief',true).order('naam'),
   ]);
   verkopen = v.data||[]; klanten = k.data||[]; circuits = c.data||[]; producten = p.data||[];
