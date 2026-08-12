@@ -17,7 +17,13 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;overflow-x:hidden}
-#header{background:#111827;color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;gap:12px}
+#header{background:#111827;color:#fff;padding:0 16px;display:flex;flex-direction:column;position:sticky;top:0;z-index:100}
+#header-top{display:flex;align-items:center;height:54px;gap:10px}
+#nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;border-top:1px solid #1f2937}
+#nav-tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;color:#9ca3af;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;flex-shrink:0;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab:hover{color:#fff}
+.tab.active{color:#60a5fa;border-bottom-color:#60a5fa}
 .logo{display:flex;align-items:center;gap:12px;cursor:pointer;order:-1}
 .logo-name{font-weight:800;font-size:18px;letter-spacing:-0.5px}
 .logo-sub{color:#6b7280;font-size:13px}
@@ -226,33 +232,40 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 <body>
 
 <header id="header">
-  <div style="display:flex;align-items:center;gap:10px;order:1;margin-left:auto">
-    <span id="sync-indicator" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#f59e0b;white-space:nowrap" title="Bezig met synchroniseren...">
-      <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;animation:pulse 1.5s infinite"></span>
-      <span id="sync-indicator-text">niet gesync'd</span>
-    </span>
-    <span id="db-status" style="font-size:12px;color:#6b7280;display:flex;align-items:center;white-space:nowrap"></span><div class="nav-wrap">
-    <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()">☰ <span class="btn-lbl" style="font-size:13px">Menu</span></button>
-    <div class="nav-dropdown" id="nav-dropdown">
-      <div class="nav-header">Navigatie</div>
-      <button class="nav-item" data-nav="lijst" onclick="navigeerNav('lijst')">Sessies</button>
-      <button class="nav-item" data-nav="motoren" onclick="localStorage.removeItem('tbp_motoren_view');window.location.href='/motoren/'">Motoren</button>
-      <button class="nav-item" data-nav="klanten" onclick="localStorage.removeItem('tbp_klanten_view');window.location.href='/klanten/'">Klanten</button>
-      <button class="nav-item" data-nav="analyse" onclick="window.location.href='/analyse/'">Analyse</button>
-      <button class="nav-item" data-nav="carburatoren" onclick="window.location.href='/carburators/'">Carburatoren</button>
-      <button class="nav-item" data-nav="revisies" onclick="window.location.href='/revisie/'">Revisies</button>
-      <div class="nav-divider"></div>
-      <button class="nav-item" onclick="window.location.href='/materiaal/'">&#128230; Materiaal</button>
-      <div class="nav-divider"></div>
-      <button class="nav-item" id="btn-logout" style="display:none" onclick="document.getElementById('nav-dropdown').classList.remove('open');doLogout()">Afmelden</button>
+  <div id="header-top">
+    <div class="logo" onclick="navigeer('lijst')">
+      <img src="/logos/dfk-engines-transp.png" style="height:44px;object-fit:contain;display:block">
+      <span class="logo-name">ProDynoDFK</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <span id="sync-indicator" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#f59e0b;white-space:nowrap" title="Bezig met synchroniseren...">
+        <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;animation:pulse 1.5s infinite"></span>
+        <span id="sync-indicator-text">niet gesync'd</span>
+      </span>
+      <span id="db-status" style="font-size:12px;color:#6b7280;display:flex;align-items:center;white-space:nowrap"></span>
+      <div class="nav-wrap">
+        <button class="nav-toggle" onclick="toggleNav()" style="display:flex;align-items:center;gap:6px">
+          <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="font-size:11px;opacity:.7">&#9660;</span>
+        </button>
+        <div class="nav-dropdown" id="nav-dropdown" style="right:0">
+          <div id="nav-materiaal" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/materiaal/'">Materiaal</button>
+            <div class="nav-divider"></div>
+          </div>
+          <button class="nav-item" onclick="doLogout()">Afmelden</button>
+        </div>
+      </div>
     </div>
   </div>
-  </div>
-  <div class="logo" onclick="navigeer('lijst')">
-    <img src="logos/dfk-engines-transp.png" style="height:52px;object-fit:contain;display:block">
-    <span class="logo-name">ProDynoDFK</span>
-    </div>
-</div>
+  <nav id="nav-tabs">
+    <button class="tab" data-nav="lijst" onclick="navigeerNav('lijst')">Sessies</button>
+    <button class="tab" onclick="localStorage.removeItem('tbp_motoren_view');window.location.href='/motoren/'">Motoren</button>
+    <button class="tab" onclick="localStorage.removeItem('tbp_klanten_view');window.location.href='/klanten/'">Klanten</button>
+    <button class="tab" onclick="window.location.href='/analyse/'">Analyse</button>
+    <button class="tab" onclick="window.location.href='/carburators/'">Carburatoren</button>
+    <button class="tab" onclick="window.location.href='/revisie/'">Revisies</button>
+  </nav>
 </header>
 
 <!-- Login scherm -->
@@ -532,12 +545,10 @@ function scheduleSyncRetry(){
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 function showLogin() {
   document.getElementById('login-screen').classList.add('active');
-  document.getElementById('btn-logout').style.display = 'none';
 }
 
 function showApp() {
   document.getElementById('login-screen').classList.remove('active');
-  document.getElementById('btn-logout').style.display = '';
 }
 
 async function doLogin() {
@@ -605,6 +616,18 @@ function startRealtime() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 async function loadAndShow() {
+  // Naam en rol ophalen voor de navbar
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    const [profRes, rolRes] = await Promise.all([
+      sb.from('profiles').select('naam').eq('email', user.email).single(),
+      sb.from('user_roles').select('rol').eq('user_email', user.email)
+    ]);
+    const naam = profRes.data?.naam || user.email.split('@')[0];
+    document.getElementById('header-naam').textContent = naam;
+    const rollen = new Set((rolRes.data||[]).map(r=>r.rol));
+    if (rollen.has('admin')) document.getElementById('nav-materiaal').style.display = '';
+  }
   document.getElementById('main').innerHTML = '<div class="loading">⏳ Laden...</div>';
   const [remote] = await Promise.all([dbLoad(), dbMotorenLoad()]);
   if (remote !== null) {
@@ -2138,9 +2161,9 @@ function navigeerNav(v) {
 }
 function updateNavActive() {
   const root = view.split('-')[0];
-  const map = { lijst:'lijst', nieuw:'lijst', detail:'lijst', klanten:'klanten', 'klant':'klanten', motoren:'motoren', motor:'motoren' };
-  const active = map[root] || map[view] || '';
-  document.querySelectorAll('.nav-item[data-nav]').forEach(el => {
+  const map = { lijst:'lijst', nieuw:'lijst', detail:'lijst' };
+  const active = map[root] || map[view] || 'lijst';
+  document.querySelectorAll('#nav-tabs .tab[data-nav]').forEach(el => {
     el.classList.toggle('active', el.dataset.nav === active);
   });
 }
