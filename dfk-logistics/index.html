@@ -951,7 +951,6 @@ function renderBeheerKlanten(){
     <form id="form-klant">
       <div class="form-grid" style="margin-bottom:14px">
         <div class="field"><label class="field-label">Naam *</label><input class="inp" id="k-naam" placeholder="Klantnaam" required autocomplete="off"></div>
-        <div class="field"><label class="field-label">Team</label><input class="inp" id="k-team" placeholder="Teamnaam" autocomplete="off"></div>
         <div class="field"><label class="field-label">E-mail</label><input class="inp" id="k-email" type="email" placeholder="klant@email.com" autocomplete="off"></div>
         <div class="field"><label class="field-label">Telefoon</label><input class="inp" id="k-tel" placeholder="+32 ..." autocomplete="off"></div>
       </div>
@@ -960,10 +959,9 @@ function renderBeheerKlanten(){
   </div>
   ${klanten.length ? `<div class="form-card"><div style="overflow-x:auto">
     <table class="items-tbl">
-      <thead><tr><th>Naam</th><th>Team</th><th>E-mail</th><th>Telefoon</th><th></th></tr></thead>
+      <thead><tr><th>Naam</th><th>E-mail</th><th>Telefoon</th><th></th></tr></thead>
       <tbody>${klanten.map(k=>`<tr>
         <td style="font-weight:600">${esc(k.naam)}</td>
-        <td style="color:#6b7280">${esc(k.team||'')}</td>
         <td style="color:#6b7280">${esc(k.email||'')}</td>
         <td style="color:#6b7280">${esc(k.telefoon||'')}</td>
         <td><button class="del-btn" onclick="verwijderKlant('${k.id}')">&times;</button></td>
@@ -998,7 +996,7 @@ async function verwijderCircuit(id){
 }
 async function voegKlantToe(e){
   e.preventDefault(); const f=e.target;
-  const {data,error}=await sb.from('verkoop_klanten').insert({naam:f.querySelector('#k-naam').value.trim(),team:f.querySelector('#k-team').value.trim()||null,email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
+  const {data,error}=await sb.from('verkoop_klanten').insert({naam:f.querySelector('#k-naam').value.trim(),email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
   if(error){await toonMelding('Fout: '+error.message);return;}
   klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam)); f.reset(); render();
 }
