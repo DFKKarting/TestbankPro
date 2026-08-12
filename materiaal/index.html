@@ -408,14 +408,11 @@ async function verwijderAccount(email){
 }
 
 function rolBadges(rls){
-  return rls.map(r=>`<span style="display:inline-flex;align-items:center;gap:3px">
-    <select class="sel role-${r.rol}" style="font-size:12px;padding:2px 4px;height:26px;border-radius:6px" onchange="wijzigRol('${r.id}',this.value)">
-      <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
-      <option value="testbank"${r.rol==='testbank'?' selected':''}>testbank</option>
-      <option value="materiaal"${r.rol==='materiaal'?' selected':''}>materiaal</option>
-    </select>
-    <button class="del-btn" style="font-size:12px;padding:0 3px" onclick="verwijderRol('${r.id}')">&times;</button>
-  </span>`).join('');
+  return rls.map(r=>`<select class="sel role-${r.rol}" style="font-size:12px;padding:2px 4px;height:26px;border-radius:6px" onchange="wijzigRol('${r.id}',this.value)">
+    <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
+    <option value="testbank"${r.rol==='testbank'?' selected':''}>testbank</option>
+    <option value="materiaal"${r.rol==='materiaal'?' selected':''}>materiaal</option>
+  </select>`).join('');
 }
 
 async function wijzigRol(id, nieuweRol){
