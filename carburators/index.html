@@ -363,6 +363,7 @@ async function init(){
     if(!rol.has('dfk-engines')&&!rol.has('admin')){window.location.href=rol.has('dfk-logistics')?'/dfk-logistics/':'index.html';return;}
     sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:_p})=>{const _el=document.getElementById('header-naam');if(_el)_el.textContent=_p?.naam||session.user.email.split('@')[0];});
     if(rol.has('admin')){const _m=document.getElementById('nav-materiaal');if(_m)_m.style.display='';}
+  if(rol.has('admin')){const _b=document.getElementById('nav-instellingen-wrap');if(_b)_b.style.display='';}
   }catch{window.location.href='/';return;}
   laadCarbus();
   render();
