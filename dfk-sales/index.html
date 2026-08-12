@@ -184,6 +184,7 @@ let sb = null, gebruiker = null, gebruikerNaam = '', rollen = new Set();
 let verkopen = [], klanten = [], circuits = [], producten = [];
 let view = localStorage.getItem('sales_view') || 'vandaag';
 let huidigVerkoopId = null, huidigItems = [], huidigLog = [];
+let bewerkItemId = null;
 let zoek = '';
 let dagDatum = localStorage.getItem('sales_datum') || vandaagStr();
 let dagCircuitId = localStorage.getItem('sales_circuit_id') || '';
@@ -317,7 +318,7 @@ async function voegItemToe(e){
   const aantal = Math.max(1,parseInt(f.querySelector('#i-aantal').value)||1);
 
   if(!acProductSel){
-    const {data:np} = await sb.from('producten').insert({naam,actief:true,categorie:'Algemeen'}).select().single();
+    const {data:np} = await sb.from('producten').insert({naam,actief:true}).select().single();
     if(np){ producten.push(np); producten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); acProductSel=np; }
   }
 
@@ -343,6 +344,17 @@ async function voegItemToe(e){
   setTimeout(()=>document.getElementById('i-naam-inp')?.focus(),50);
 }
 
+async function slaItemBewerkingOp(e, id){
+  e.preventDefault();
+  const naam = e.target.querySelector('[name="naam"]').value.trim();
+  const aantal = Math.max(1, parseInt(e.target.querySelector('[name="aantal"]').value)||1);
+  const {error} = await sb.from('verkoop_items').update({product_naam:naam,aantal}).eq('id',id);
+  if(error){ await toonMelding('Fout: '+error.message); return; }
+  const item = huidigItems.find(x=>x.id===id);
+  if(item){ const oud=item.product_naam; item.product_naam=naam; item.aantal=aantal;
+    await logActie(huidigVerkoopId,'product aangepast',`${oud} → ${naam}, ${aantal}×`); }
+  bewerkItemId=null; render();
+}
 async function verwijderItem(id){
   const item = huidigItems.find(i=>i.id===id);
   if(!await toonBevestiging(`${item?.product_naam||'item'} verwijderen uit deze verkoop?`)) return;
@@ -614,17 +626,30 @@ function renderDetail(){
   const isOpen = v.status==='open';
 
   const itemRijen = huidigItems.length === 0 ?
-    `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:28px;font-size:13px">Nog geen producten — voeg het eerste product toe hierboven</td></tr>` :
-    huidigItems.map(i=>`<tr>
-      <td>
-        <div style="font-weight:600">${esc(i.product_naam)}</div>
-        ${i.categorie||i.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${[i.categorie,i.artikelnummer].filter(Boolean).map(esc).join(' · ')}</div>`:''}
-      </td>
-      <td style="text-align:center;font-weight:600">${i.aantal}</td>
-      <td style="text-align:right;white-space:nowrap">
-        ${isOpen?`<button class="del-btn" onclick="verwijderItem('${i.id}')" title="Verwijderen">&times;</button>`:''}
-      </td>
-    </tr>`).join('');
+    `<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:28px;font-size:13px">Nog geen producten — voeg het eerste product toe hierboven</td></tr>` :
+    huidigItems.map(i=>{
+      if(isOpen && bewerkItemId===i.id) return `<tr>
+        <td colspan="4">
+          <form onsubmit="slaItemBewerkingOp(event,'${i.id}')" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:4px 0">
+            <div class="field" style="flex:2;min-width:160px"><label class="field-label">Naam</label><input class="inp" name="naam" value="${esc(i.product_naam)}" required></div>
+            <div class="field" style="flex:0 0 70px"><label class="field-label">Aantal</label><input class="inp" name="aantal" type="number" min="1" value="${i.aantal}" required style="text-align:center"></div>
+            <button class="btn-blauw" type="submit" style="white-space:nowrap">Opslaan</button>
+            <button class="btn-outline" type="button" onclick="bewerkItemId=null;render()">Annuleren</button>
+          </form>
+        </td>
+      </tr>`;
+      return `<tr>
+        <td>
+          <div style="font-weight:600">${esc(i.product_naam)}</div>
+          ${i.artikelnummer?`<div style="font-size:11px;color:#9ca3af">${esc(i.artikelnummer)}</div>`:''}
+        </td>
+        <td style="text-align:center;font-weight:600">${i.aantal}</td>
+        <td style="text-align:right;white-space:nowrap">
+          ${isOpen?`<button class="edit-btn" onclick="bewerkItemId='${i.id}';render()" title="Bewerken">&#9998;</button>`:''}
+          ${isOpen?`<button class="del-btn" onclick="verwijderItem('${i.id}')" title="Verwijderen">&times;</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
 
 
 
