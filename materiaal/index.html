@@ -260,6 +260,11 @@ async function laadAanvragen(){
   aanvragen = data || [];
 }
 
+async function ruimOudeAanvragenOp(){
+  const grens = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await sb.from('aanvragen').delete().eq('status','mee').lt('verwerkt_op', grens);
+}
+
 async function laadGebruikers(){
   const [{data:rollen},{data:prof}] = await Promise.all([
     sb.from('user_roles').select('*').order('user_email'),
@@ -823,6 +828,7 @@ async function init(){
   if(rollen.has('admin')||rollen.has('testbank')) document.getElementById('nav-testbank').style.display='';
 
   await Promise.all([
+    ruimOudeAanvragenOp(),
     laadAlles(),
     rollen.has('admin') ? laadGebruikers() : Promise.resolve(),
   ]);
