@@ -606,8 +606,7 @@ function renderDetail(){
       </td>
     </tr>`).join('');
 
-  const btwHtml = Object.entries(groepen).sort(([a],[b])=>+b-+a)
-    .map(([pct,bedrag])=>`<div class="totaal-row"><span>BTW ${pct}%</span><span>${fmt(bedrag)}</span></div>`).join('');
+
 
   return `
   <div class="head-row">
