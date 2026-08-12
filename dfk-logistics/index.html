@@ -315,6 +315,14 @@ async function laadGebruikers(){
   if(el) el.textContent = gebruikerNaam || gebruiker?.email || '';
 }
 
+function acEnter(e, dropId){
+  if(e.key !== 'Enter') return;
+  const drop = document.getElementById(dropId);
+  if(!drop || drop.style.display === 'none') return;
+  e.preventDefault();
+  drop.querySelector('.ac-item')?.click();
+}
+
 function bouwOnderdeelSuggesties(){
   onderdeelSuggesties = [...new Set(aanvragen.map(a=>a.onderdeel).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'));
 }
@@ -666,7 +674,7 @@ function renderNieuw(){
           <div class="field">
             <label class="field-label">Onderdeel *</label>
             <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" oninput="filterOnderdelen(this.value)" onkeydown="acEnter(event,'ac-onderdeel-drop')">
               <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
             </div>
           </div>
@@ -717,7 +725,7 @@ function renderBewerken(){
           <div class="field">
             <label class="field-label">Onderdeel *</label>
             <div class="ac-wrap">
-              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)">
+              <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}" oninput="filterOnderdelen(this.value)" onkeydown="acEnter(event,'ac-onderdeel-drop')">
               <div class="ac-drop" id="ac-onderdeel-drop" style="display:none"></div>
             </div>
           </div>

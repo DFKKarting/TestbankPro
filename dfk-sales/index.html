@@ -379,6 +379,14 @@ async function verwijderVerkoop(){
 }
 
 // ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
+function acEnter(e, dropId){
+  if(e.key !== 'Enter') return;
+  const drop = document.getElementById(dropId);
+  if(!drop || drop.style.display === 'none') return;
+  e.preventDefault();
+  drop.querySelector('.ac-item')?.click();
+}
+
 function filterKlanten(q){
   const drop = document.getElementById('ac-klant-drop');
   if(!drop) return;
@@ -568,7 +576,7 @@ function renderNieuw(){
         <div class="field" style="grid-column:1/-1">
           <label class="field-label">Klant *</label>
           <div class="ac-wrap">
-            <input class="inp" id="n-klant-inp" placeholder="Zoek bestaande klant of typ nieuwe naam..." autocomplete="off" oninput="filterKlanten(this.value)" style="font-size:15px;padding:10px 14px">
+            <input class="inp" id="n-klant-inp" placeholder="Zoek bestaande klant of typ nieuwe naam..." autocomplete="off" oninput="filterKlanten(this.value)" onkeydown="acEnter(event,'ac-klant-drop')" style="font-size:15px;padding:10px 14px">
             <div class="ac-drop" id="ac-klant-drop" style="display:none"></div>
           </div>
         </div>
@@ -645,7 +653,7 @@ function renderDetail(){
         <div class="field" style="flex:1;min-width:200px">
           <label class="field-label">Product</label>
           <div class="ac-wrap">
-            <input class="inp" id="i-naam-inp" placeholder="Typ productnaam of artikelnummer..." autocomplete="off" oninput="filterProducten(this.value)" style="font-size:14px">
+            <input class="inp" id="i-naam-inp" placeholder="Typ productnaam of artikelnummer..." autocomplete="off" oninput="filterProducten(this.value)" onkeydown="acEnter(event,'ac-product-drop')" style="font-size:14px">
             <div class="ac-drop" id="ac-product-drop" style="display:none"></div>
           </div>
         </div>
