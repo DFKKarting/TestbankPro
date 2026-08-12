@@ -706,7 +706,7 @@ function renderInstellingen(){
         ${naam?`<span style="font-weight:600;font-size:14px">${esc(naam)}</span><br>`:''}
         <span class="user-email" style="color:#6b7280;font-size:12px">${esc(email)}</span>
         ${!heeftAccount?`<span style="color:#f59e0b;font-size:11px;margin-left:6px">&#9888; geen account</span>`:''}
-        <br><span style="color:#9ca3af;font-size:11px">Actief: ${tijdGeleden(lastActive)}</span>
+        <br><span style="color:#9ca3af;font-size:11px">${lastActive ? 'Actief: '+tijdGeleden(lastActive) : 'Nog nooit ingelogd'}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
         ${rolBadges(rls)}
