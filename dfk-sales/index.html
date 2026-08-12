@@ -779,7 +779,6 @@ function renderBeheer(){
 }
 
 function renderBeheerProducten(){
-  const catOpts = ['Onderdelen','Banden','Olie','Gereedschap','Kartmateriaal','Accessoires','Verbruiksartikelen','Diensten','Algemeen'].map(c=>`<option value="${c}">${c}</option>`).join('');
   return `
   <div class="form-card" style="margin-bottom:16px">
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuw product toevoegen</div>
@@ -793,21 +792,16 @@ function renderBeheerProducten(){
           <label class="field-label">Artikelnummer</label>
           <input class="inp" id="p-art" placeholder="bv. RB-X30-001" autocomplete="off">
         </div>
-        <div class="field">
-          <label class="field-label">Categorie</label>
-          <select class="sel" id="p-cat">${catOpts}</select>
-        </div>
       </div>
       <button class="btn-blauw" type="submit">&#43; Product toevoegen</button>
     </form>
   </div>
   ${producten.length ? `<div class="form-card"><div style="overflow-x:auto">
     <table class="items-tbl">
-      <thead><tr><th>Naam</th><th>Art.nr.</th><th>Categorie</th><th></th></tr></thead>
+      <thead><tr><th>Naam</th><th>Art.nr.</th><th></th></tr></thead>
       <tbody>${producten.map(p=>`<tr>
         <td style="font-weight:600">${esc(p.naam)}</td>
         <td style="color:#6b7280">${esc(p.artikelnummer||'')}</td>
-        <td><span style="background:#e5e7eb;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600">${esc(p.categorie||'')}</span></td>
         <td><button class="del-btn" onclick="verwijderProduct('${p.id}')">&times;</button></td>
       </tr>`).join('')}</tbody>
     </table>
@@ -871,7 +865,7 @@ function renderBeheerKlanten(){
 async function voegProductToe(e){
   e.preventDefault(); const f=e.target;
   const naam=f.querySelector('#p-naam').value.trim();
-  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,categorie:f.querySelector('#p-cat').value,actief:true}).select().single();
+  const {data,error}=await sb.from('producten').insert({naam,artikelnummer:f.querySelector('#p-art').value.trim()||null,actief:true}).select().single();
   if(error){await toonMelding('Fout: '+error.message);return;}
   producten.push(data); producten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); f.reset(); render();
 }
