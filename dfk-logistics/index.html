@@ -101,6 +101,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .role-dfk-engines{background:#dbeafe;color:#1e40af}
 .role-dfk-logistics{background:#d1fae5;color:#065f46}
 .del-btn{background:none;border:none;cursor:pointer;color:#ef4444;font-size:15px;padding:2px 5px;border-radius:4px;font-family:inherit;line-height:1}
+.edit-btn{background:none;border:none;cursor:pointer;color:#6b7280;font-size:15px;padding:2px 5px;border-radius:4px;font-family:inherit;line-height:1}
+.edit-btn:hover{background:#f3f4f6;color:#111827}
 #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
 #modal-box{background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #modal-tekst{font-size:15px;color:#111827;line-height:1.5;margin-bottom:20px;white-space:pre-wrap}
@@ -196,6 +198,7 @@ let gecontroleerd = new Set();
 let view = localStorage.getItem('mat_view') || 'overzicht';
 let statusFilter = 'alles';
 let bewerkEmail = null;
+let bewerkAanvraagId = null;
 let realtimeSub = null;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
@@ -242,6 +245,7 @@ function aanvraagKaart(a, toonTruck){
     </div>
     <div class="aanvraag-acties">
       ${statusSelHtml(a.id, a.status)}
+      <button class="edit-btn" onclick="bewerkAanvraag('${a.id}')" title="Bewerken">&#9998;</button>
       ${rollen.has('admin')?`<button class="del-btn" onclick="verwijderAanvraag('${a.id}')" title="Verwijderen">&times;</button>`:''}
     </div>
   </div>`;
@@ -328,6 +332,32 @@ async function slaatAanvraagOp(e){
   }).select().single();
   if(error){ await toonMelding('Opslaan mislukt: '+error.message); return; }
   if(data) aanvragen.unshift(data);
+  navigeer('overzicht');
+}
+
+function bewerkAanvraag(id){
+  bewerkAanvraagId = id;
+  navigeer('bewerken');
+}
+
+async function slaatAanvraagBewerkingOp(e){
+  e.preventDefault();
+  const f = e.target;
+  const bestemming = f.querySelector('#a-bestemming').value.trim();
+  const truck_id = f.querySelector('#a-truck').value;
+  const onderdeel = f.querySelector('#a-onderdeel').value.trim();
+  const aantal = parseInt(f.querySelector('#a-aantal').value)||1;
+  const prioriteit = f.querySelector('#a-prioriteit').value||'normaal';
+  const opmerking = f.querySelector('#a-opmerking').value.trim();
+  if(!onderdeel) return;
+  const {error} = await sb.from('aanvragen').update({
+    truck_id: truck_id||null, onderdeel, aantal, prioriteit,
+    bestemming: bestemming||null, opmerking: opmerking||null,
+  }).eq('id', bewerkAanvraagId);
+  if(error){ await toonMelding('Opslaan mislukt: '+error.message); return; }
+  const idx = aanvragen.findIndex(a=>a.id===bewerkAanvraagId);
+  if(idx>=0) Object.assign(aanvragen[idx], {truck_id:truck_id||null, onderdeel, aantal, prioriteit, bestemming:bestemming||null, opmerking:opmerking||null});
+  bewerkAanvraagId = null;
   navigeer('overzicht');
 }
 
@@ -471,6 +501,7 @@ function render(){
   const el = document.getElementById('main');
   if(view==='overzicht')         el.innerHTML = renderOverzicht();
   else if(view==='nieuw')        el.innerHTML = renderNieuw();
+  else if(view==='bewerken')     el.innerHTML = renderBewerken();
   else if(view==='werkplaats')   el.innerHTML = renderWerkplaats();
   else if(view==='vertrek')      el.innerHTML = renderVertrek();
   else if(view==='instellingen') el.innerHTML = renderInstellingen();
@@ -572,6 +603,54 @@ function renderNieuw(){
         <div class="actions-row">
           <button class="btn-blauw" type="submit">Aanvraag indienen</button>
           <button class="btn-outline" type="button" onclick="navigeer('overzicht')">Annuleren</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+function renderBewerken(){
+  const a = aanvragen.find(x=>x.id===bewerkAanvraagId);
+  if(!a) return renderOverzicht();
+  return `<div class="head-row">
+      <button class="btn-sm" onclick="bewerkAanvraagId=null;navigeer('overzicht')">&larr; Terug</button>
+      <h1 class="page-title">Aanvraag bewerken</h1>
+    </div>
+    <div class="form-card">
+      <form id="form-bewerken">
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label class="field-label">Bestemming</label>
+            <input class="inp" id="a-bestemming" placeholder="bv. Genk, Lonato, werkplaats..." autocomplete="off" value="${esc(a.bestemming||'')}">
+          </div>
+          <div class="field">
+            <label class="field-label">Truck</label>
+            <select class="sel" id="a-truck">
+              <option value="">Kies truck...</option>
+              ${trucks.map(t=>`<option value="${t.id}"${t.id===a.truck_id?' selected':''}>${esc(t.naam)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Onderdeel *</label>
+            <input class="inp" id="a-onderdeel" placeholder="Naam onderdeel" required autocomplete="off" value="${esc(a.onderdeel||'')}">
+          </div>
+          <div class="field">
+            <label class="field-label">Aantal</label>
+            <input class="inp" id="a-aantal" type="number" min="1" value="${a.aantal||1}">
+          </div>
+          <div class="field">
+            <label class="field-label">Prioriteit</label>
+            <select class="sel" id="a-prioriteit">
+              ${Object.entries(PRIO).map(([k,v])=>`<option value="${k}"${k===a.prioriteit?' selected':''}>${v.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:20px">
+          <label class="field-label">Opmerking</label>
+          <textarea class="textarea" id="a-opmerking" placeholder="Extra info, locatie, ...">${esc(a.opmerking||'')}</textarea>
+        </div>
+        <div class="actions-row">
+          <button class="btn-blauw" type="submit">Opslaan</button>
+          <button class="btn-outline" type="button" onclick="bewerkAanvraagId=null;navigeer('overzicht')">Annuleren</button>
         </div>
       </form>
     </div>`;
@@ -756,6 +835,8 @@ function renderInstellingen(){
 function bindForms(){
   const fa = document.getElementById('form-aanvraag');
   if(fa) fa.onsubmit = slaatAanvraagOp;
+  const fb = document.getElementById('form-bewerken');
+  if(fb) fb.onsubmit = slaatAanvraagBewerkingOp;
   const ft = document.getElementById('form-truck');
   if(ft) ft.onsubmit = voegTruckToe;
   const fac = document.getElementById('form-account');
