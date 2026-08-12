@@ -433,6 +433,25 @@ async function verwijderRol(id){
   render();
 }
 
+// ── HULPFUNCTIES ──────────────────────────────────────────────────────────────
+function tijdGeleden(ts){
+  if(!ts) return 'Nooit';
+  const min = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+  if(min < 2) return 'Zojuist';
+  if(min < 60) return `${min} min geleden`;
+  const uur = Math.floor(min/60);
+  if(uur < 24) return `${uur} uur geleden`;
+  const dag = Math.floor(uur/24);
+  if(dag === 1) return 'Gisteren';
+  if(dag < 7) return `${dag} dagen geleden`;
+  return new Date(ts).toLocaleDateString('nl-NL');
+}
+
+async function updateLaatsteActief(){
+  if(!sb || !gebruiker) return;
+  await sb.from('profiles').update({last_active: new Date().toISOString()}).eq('email', gebruiker.email);
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function navigeer(v){
   view = v;
@@ -655,10 +674,10 @@ function renderInstellingen(){
   const emailsMetProfiel = new Set(profielen.map(p=>p.email));
   const extraEmails = [...new Set(gebruikers.map(u=>u.user_email))].filter(e=>!emailsMetProfiel.has(e));
   const alleGebruikers = [
-    ...profielen.map(p=>({email:p.email, heeftAccount:true})),
-    ...extraEmails.map(e=>({email:e, heeftAccount:false})),
+    ...profielen.map(p=>({email:p.email, heeftAccount:true, lastActive:p.last_active})),
+    ...extraEmails.map(e=>({email:e, heeftAccount:false, lastActive:null})),
   ];
-  const userHtml = alleGebruikers.map(({email, heeftAccount})=>{
+  const userHtml = alleGebruikers.map(({email, heeftAccount, lastActive})=>{
     const rls = gebruikers.filter(u=>u.user_email===email);
     const naam = namenCache[email] || '';
     const bezig = bewerkEmail === email;
@@ -684,6 +703,7 @@ function renderInstellingen(){
         ${naam?`<span style="font-weight:600;font-size:14px">${esc(naam)}</span><br>`:''}
         <span class="user-email" style="color:#6b7280;font-size:12px">${esc(email)}</span>
         ${!heeftAccount?`<span style="color:#f59e0b;font-size:11px;margin-left:6px">&#9888; geen account</span>`:''}
+        <br><span style="color:#9ca3af;font-size:11px">Actief: ${tijdGeleden(lastActive)}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
         ${rolBadges(rls)}
@@ -810,6 +830,8 @@ async function init(){
     rollen.has('admin') ? laadGebruikers() : Promise.resolve(),
   ]);
   setupRealtime();
+  updateLaatsteActief();
+  setInterval(updateLaatsteActief, 5 * 60 * 1000);
   render();
 }
 

@@ -628,6 +628,8 @@ async function loadAndShow() {
     const rollen = new Set((rolRes.data||[]).map(r=>r.rol));
     if (rollen.has('admin')) document.getElementById('nav-materiaal').style.display = '';
   }
+  updateLaatsteActief();
+  setInterval(updateLaatsteActief, 5 * 60 * 1000);
   document.getElementById('main').innerHTML = '<div class="loading">⏳ Laden...</div>';
   const [remote] = await Promise.all([dbLoad(), dbMotorenLoad()]);
   if (remote !== null) {
@@ -2150,6 +2152,13 @@ document.addEventListener('drop',e=>{
   document.getElementById('drag-overlay').classList.remove('active');
   handleFiles([...e.dataTransfer.files]);
 });
+
+async function updateLaatsteActief(){
+  if(!sb) return;
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user) return;
+  await sb.from('profiles').update({last_active: new Date().toISOString()}).eq('email', user.email);
+}
 
 // ── NAVIGATIEMENU ─────────────────────────────────────────────────────────────
 function toggleNav() {
