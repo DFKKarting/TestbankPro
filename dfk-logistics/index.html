@@ -419,8 +419,8 @@ async function verwijderAccount(email){
 function rolBadges(rls){
   return rls.map(r=>`<select class="role-sel role-${r.rol}" onchange="wijzigRol('${r.id}',this.value)">
     <option value="admin"${r.rol==='admin'?' selected':''}>admin</option>
-    <option value="testbank"${r.rol==='testbank'?' selected':''}>testbank</option>
-    <option value="materiaal"${r.rol==='materiaal'?' selected':''}>materiaal</option>
+    <option value="testbank"${r.rol==='dfk-engines'?' selected':''}>DFK Engines</option>
+    <option value="materiaal"${r.rol==='dfk-logistics'?' selected':''}>DFK Logistics</option>
   </select>`).join('');
 }
 
@@ -740,8 +740,8 @@ function renderInstellingen(){
         <select class="sel" id="ac-rol" style="flex:1;min-width:130px">
           <option value="">Geen rol</option>
           <option value="admin">admin</option>
-          <option value="testbank">testbank</option>
-          <option value="materiaal">materiaal</option>
+          <option value="testbank">DFK Engines</option>
+          <option value="materiaal">DFK Logistics</option>
         </select>
         <button class="btn-groen" type="submit" style="white-space:nowrap">+ Account aanmaken</button>
       </form>
@@ -817,8 +817,8 @@ async function init(){
   if(!gebruikerNaam) gebruikerNaam = namenCache[gebruiker.email] || '';
   document.getElementById('header-naam').textContent = gebruikerNaam || gebruiker.email;
 
-  if(!rollen.has('materiaal') && !rollen.has('admin')){
-    if(rollen.has('testbank')){ window.location.href='/'; return; }
+  if(!rollen.has('dfk-logistics') && !rollen.has('admin')){
+    if(rollen.has('dfk-engines')){ window.location.href='/'; return; }
     document.getElementById('main').innerHTML = `<div class="empty-state">
       <div class="empty-icon">&#x1F512;</div>
       <div class="empty-title">Geen toegang</div>
@@ -829,7 +829,7 @@ async function init(){
   }
 
   if(rollen.has('admin')) document.getElementById('nav-instellingen-wrap').style.display='';
-  if(rollen.has('admin')||rollen.has('testbank')) document.getElementById('nav-testbank').style.display='';
+  if(rollen.has('admin')||rollen.has('dfk-engines')) document.getElementById('nav-testbank').style.display='';
 
   await Promise.all([
     ruimOudeAanvragenOp(),

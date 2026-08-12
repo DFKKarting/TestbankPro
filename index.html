@@ -564,7 +564,7 @@ async function doLogin() {
   if (error) { errEl.textContent = 'Inloggen mislukt — controleer je gegevens.'; errEl.classList.add('active'); return; }
   const {data:rd} = await sb.from('user_roles').select('rol').eq('user_email', loginData.user.email);
   const rol = new Set((rd||[]).map(r=>r.rol));
-  if(!rol.has('testbank')&&!rol.has('admin')){ window.location.href='/dfk-logistics/'; return; }
+  if(!rol.has('dfk-engines')&&!rol.has('admin')){ window.location.href='/dfk-logistics/'; return; }
   await loadAndShow();
 }
 
@@ -691,7 +691,7 @@ async function init() {
   if (session) {
     const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
     const rol=new Set((rd||[]).map(r=>r.rol));
-    if(!rol.has('testbank')&&!rol.has('admin')){window.location.href='/dfk-logistics/';return;}
+    if(!rol.has('dfk-engines')&&!rol.has('admin')){window.location.href='/dfk-logistics/';return;}
     await loadAndShow();
   } else {
     showLogin();

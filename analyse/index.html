@@ -1362,7 +1362,7 @@ async function init(){
   }
   const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
   const rol=new Set((rd||[]).map(r=>r.rol));
-  if(!rol.has('testbank')&&!rol.has('admin')){window.location.href=rol.has('materiaal')?'materiaal.html':'index.html';return;}
+  if(!rol.has('dfk-engines')&&!rol.has('admin')){window.location.href=rol.has('dfk-logistics')?'/dfk-logistics/':'index.html';return;}
   sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:_p})=>{const _el=document.getElementById('header-naam');if(_el)_el.textContent=_p?.naam||session.user.email.split('@')[0];});
   if(rol.has('admin')){const _m=document.getElementById('nav-materiaal');if(_m)_m.style.display='';}
   await laadEnToon();
