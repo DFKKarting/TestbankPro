@@ -188,7 +188,7 @@ let aanvragen = [];
 let gebruikers = [];
 let profielen = [];
 let gecontroleerd = new Set();
-let view = 'overzicht';
+let view = localStorage.getItem('mat_view') || 'overzicht';
 let statusFilter = 'alles';
 let bewerkEmail = null;
 let realtimeSub = null;
@@ -435,6 +435,7 @@ async function verwijderRol(id){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function navigeer(v){
   view = v;
+  localStorage.setItem('mat_view', v);
   document.getElementById('nav-dropdown')?.classList.remove('open');
   updateNavActief();
   render();
