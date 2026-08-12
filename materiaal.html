@@ -242,9 +242,13 @@ function aanvraagKaart(a, toonTruck){
 
 // ── DATA LADEN ────────────────────────────────────────────────────────────────
 async function laadAlles(){
-  const {data} = await sb.from('trucks').select('*').eq('actief',true).order('volgorde');
-  trucks = data || [];
-  await laadAanvragen();
+  const [{data:t},{data:a,error}] = await Promise.all([
+    sb.from('trucks').select('*').eq('actief',true).order('volgorde'),
+    sb.from('aanvragen').select('*').order('created_at',{ascending:false}),
+  ]);
+  trucks = t || [];
+  if(error) console.error(error);
+  aanvragen = a || [];
 }
 
 async function laadAanvragen(){
@@ -254,9 +258,11 @@ async function laadAanvragen(){
 }
 
 async function laadGebruikers(){
-  const {data:rollen} = await sb.from('user_roles').select('*').order('user_email');
+  const [{data:rollen},{data:prof}] = await Promise.all([
+    sb.from('user_roles').select('*').order('user_email'),
+    sb.from('profiles').select('*').order('email'),
+  ]);
   gebruikers = rollen || [];
-  const {data:prof} = await sb.from('profiles').select('*').order('email');
   profielen = prof || [];
   namenCache = {};
   (rollen||[]).forEach(r=>{ if(r.naam) namenCache[r.user_email]=r.naam; });
@@ -738,22 +744,14 @@ async function init(){
     gebruiker = session.user;
   }catch{ window.location.href='index.html'; return; }
 
-  const {data:rd} = await sb.from('user_roles').select('rol,naam').eq('user_email', gebruiker.email);
-  (rd||[]).forEach(r=>{
-    rollen.add(r.rol);
-    if(r.naam) gebruikerNaam = r.naam;
-  });
-
-  const {data:namen} = await sb.from('user_roles').select('user_email,naam').not('naam','is',null);
-  (namen||[]).forEach(r=>{ if(r.naam) namenCache[r.user_email]=r.naam; });
-
-  // ook naam uit profiles ophalen als die er is
-  if(!gebruikerNaam){
-    const {data:prf} = await sb.from('profiles').select('naam').eq('email', gebruiker.email).single();
-    if(prf?.naam) gebruikerNaam = prf.naam;
-  }
-  const headerNaam = document.getElementById('header-naam');
-  if(headerNaam) headerNaam.textContent = gebruikerNaam || gebruiker.email;
+  const [{data:rd},{data:profielenInit}] = await Promise.all([
+    sb.from('user_roles').select('rol,naam').eq('user_email', gebruiker.email),
+    sb.from('profiles').select('email,naam').not('naam','is',null),
+  ]);
+  (rd||[]).forEach(r=>{ rollen.add(r.rol); if(r.naam) gebruikerNaam=r.naam; });
+  (profielenInit||[]).forEach(p=>{ if(p.naam) namenCache[p.email]=p.naam; });
+  if(!gebruikerNaam) gebruikerNaam = namenCache[gebruiker.email] || '';
+  document.getElementById('header-naam').textContent = gebruikerNaam || gebruiker.email;
 
   if(!rollen.has('materiaal') && !rollen.has('admin')){
     if(rollen.has('testbank')){ window.location.href='index.html'; return; }
@@ -769,8 +767,10 @@ async function init(){
   if(rollen.has('admin')) document.getElementById('nav-beheer').style.display='';
   if(rollen.has('admin')||rollen.has('testbank')) document.getElementById('nav-testbank').style.display='';
 
-  await laadAlles();
-  if(rollen.has('admin')) await laadGebruikers();
+  await Promise.all([
+    laadAlles(),
+    rollen.has('admin') ? laadGebruikers() : Promise.resolve(),
+  ]);
   setupRealtime();
   render();
 }
