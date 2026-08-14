@@ -186,7 +186,7 @@ let view = localStorage.getItem('sales_view') || 'vandaag';
 let huidigVerkoopId = null, huidigItems = [], huidigLog = [];
 let bewerkItemId = null;
 let zoek = '';
-let dagDatum = localStorage.getItem('sales_datum') || vandaagStr();
+let dagDatum = vandaagStr();
 let dagCircuitId = localStorage.getItem('sales_circuit_id') || '';
 let dagCircuitNaam = localStorage.getItem('sales_circuit_naam') || '';
 let histFilter = { van:'', tot:'', circuit:'', klant:'', status:'' };
@@ -522,7 +522,7 @@ function verkoopKaartHtml(v){
 }
 
 function renderVandaag(){
-  const vandaag = verkopen.filter(v=>v.datum===dagDatum);
+  const vandaag = verkopen.filter(v=>v.datum===dagDatum || (v.status==='open' && v.datum<dagDatum));
   const gefilterd = zoek ? vandaag.filter(v=>
     v.klant_naam.toLowerCase().includes(zoek.toLowerCase()) ||
     v.nummer.toLowerCase().includes(zoek.toLowerCase()) ||
