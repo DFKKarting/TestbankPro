@@ -483,6 +483,7 @@ document.addEventListener('click', e=>{
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
+  const focusId = document.activeElement?.id;
   const el = document.getElementById('main');
   if(view==='vandaag')      el.innerHTML = renderVandaag();
   else if(view==='nieuw')   el.innerHTML = renderNieuw();
@@ -491,6 +492,7 @@ function render(){
   else if(view==='beheer')    el.innerHTML = renderBeheer();
   updateNavActief();
   bindForms();
+  if(focusId) document.getElementById(focusId)?.focus();
 }
 
 function statusBadge(s){
@@ -549,7 +551,7 @@ function renderVandaag(){
   </div>
 
   ${vandaag.length > 0 ? `<div class="zoek-bar">
-    <input class="zoek-inp" placeholder="&#128269; Zoek op klant, nummer, referentie..." value="${esc(zoek)}" oninput="zoek=this.value;render()">
+    <input class="zoek-inp" id="zoek-vandaag" placeholder="&#128269; Zoek op klant, nummer, referentie..." value="${esc(zoek)}" oninput="zoek=this.value;render()">
     ${zoek?`<button class="btn-sm" onclick="zoek='';render()">&times; Wis</button>`:''}
   </div>` : ''}
 
