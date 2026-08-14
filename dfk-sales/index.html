@@ -530,19 +530,13 @@ function renderVandaag(){
   ) : vandaag;
   const aantalOpen = vandaag.filter(v=>v.status==='open').length;
   const aantalKlaar = vandaag.filter(v=>v.status==='klaar').length;
-  const circuitOpts = circuits.map(c=>`<option value="${c.id}"${c.id===dagCircuitId?' selected':''}>${esc(c.naam)}</option>`).join('');
-
   return `
   <div class="dag-header">
     <div class="dag-info">
       <div class="dag-title">&#128197; ${fmtDatumLang(dagDatum)}</div>
-      <div class="dag-sub">${dagCircuitNaam||'Geen circuit geselecteerd'}</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <input type="date" class="inp" style="width:auto" value="${dagDatum}" onchange="setDagDatum(this.value)">
-      <select class="sel" style="width:auto;min-width:130px" onchange="setDagCircuit(this.value,this.options[this.selectedIndex].text)">
-        <option value="">Circuit...</option>${circuitOpts}
-      </select>
     </div>
     <button class="btn-groen" onclick="navigeer('nieuw')" style="font-size:15px;padding:10px 22px">&#43; Nieuwe verkoop</button>
   </div>
