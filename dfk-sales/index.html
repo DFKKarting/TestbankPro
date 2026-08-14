@@ -189,6 +189,7 @@ let zoek = '';
 let dagDatum = vandaagStr();
 let dagCircuitId = localStorage.getItem('sales_circuit_id') || '';
 let dagCircuitNaam = localStorage.getItem('sales_circuit_naam') || '';
+let filterDagCircuit = '';
 let histFilter = { van:'', tot:'', circuit:'', klant:'', status:'' };
 let acKlantSel = null, acProductSel = null;
 let realtimeSub = null;
@@ -522,7 +523,7 @@ function verkoopKaartHtml(v){
 }
 
 function renderVandaag(){
-  const vandaag = verkopen.filter(v=>v.datum===dagDatum || (v.status==='open' && v.datum<dagDatum));
+  const vandaag = verkopen.filter(v=>(v.datum===dagDatum || (v.status==='open' && v.datum<dagDatum)) && (!filterDagCircuit || v.circuit_id===filterDagCircuit));
   const gefilterd = zoek ? vandaag.filter(v=>
     v.klant_naam.toLowerCase().includes(zoek.toLowerCase()) ||
     v.nummer.toLowerCase().includes(zoek.toLowerCase()) ||
@@ -530,6 +531,7 @@ function renderVandaag(){
   ) : vandaag;
   const aantalOpen = vandaag.filter(v=>v.status==='open').length;
   const aantalKlaar = vandaag.filter(v=>v.status==='klaar').length;
+  const circuitFilterOpts = circuits.map(c=>`<option value="${c.id}"${filterDagCircuit===c.id?' selected':''}>${esc(c.naam)}</option>`).join('');
   return `
   <div class="dag-header">
     <div class="dag-info">
@@ -537,6 +539,9 @@ function renderVandaag(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <input type="date" class="inp" style="width:auto" value="${dagDatum}" onchange="setDagDatum(this.value)">
+      <select class="sel" style="width:auto;min-width:130px" onchange="filterDagCircuit=this.value;render()">
+        <option value="">Alle circuits</option>${circuitFilterOpts}
+      </select>
     </div>
     <button class="btn-groen" onclick="navigeer('nieuw')" style="font-size:15px;padding:10px 22px">&#43; Nieuwe verkoop</button>
   </div>
