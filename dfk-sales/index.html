@@ -483,7 +483,10 @@ document.addEventListener('click', e=>{
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
-  const focusId = document.activeElement?.id;
+  const focusEl = document.activeElement;
+  const focusId = focusEl?.id;
+  const selStart = focusEl?.selectionStart;
+  const selEnd = focusEl?.selectionEnd;
   const el = document.getElementById('main');
   if(view==='vandaag')      el.innerHTML = renderVandaag();
   else if(view==='nieuw')   el.innerHTML = renderNieuw();
@@ -492,7 +495,7 @@ function render(){
   else if(view==='beheer')    el.innerHTML = renderBeheer();
   updateNavActief();
   bindForms();
-  if(focusId) document.getElementById(focusId)?.focus();
+  if(focusId){ const el2=document.getElementById(focusId); if(el2){ el2.focus(); if(selStart!=null) el2.setSelectionRange(selStart,selEnd??selStart); } }
 }
 
 function statusBadge(s){
