@@ -631,7 +631,7 @@ async function loadAndShow() {
     document.getElementById('header-naam').textContent = naam;
     const rollen = new Set((rolRes.data||[]).map(r=>r.rol));
     if (rollen.has('admin')) document.getElementById('nav-materiaal').style.display = '';
-    if (rollen.has('admin')) document.getElementById('nav-instellingen-wrap').style.display = '';
+
     if (rollen.has('admin') || rollen.has('dfk-sales')) document.getElementById('nav-sales-wrap').style.display = '';
   }
   updateLaatsteActief();
