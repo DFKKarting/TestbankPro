@@ -531,7 +531,8 @@ function renderVandaag(){
   ) : vandaag;
   const aantalOpen = vandaag.filter(v=>v.status==='open').length;
   const aantalKlaar = vandaag.filter(v=>v.status==='klaar').length;
-  const circuitFilterOpts = circuits.map(c=>`<option value="${c.id}"${filterDagCircuit===c.id?' selected':''}>${esc(c.naam)}</option>`).join('');
+  const actieveCircuitIds = new Set(verkopen.filter(v=>v.datum===dagDatum||(v.status==='open'&&v.datum<dagDatum)).map(v=>v.circuit_id).filter(Boolean));
+  const circuitFilterOpts = circuits.filter(c=>actieveCircuitIds.has(c.id)).map(c=>`<option value="${c.id}"${filterDagCircuit===c.id?' selected':''}>${esc(c.naam)}</option>`).join('');
   return `
   <div class="dag-header">
     <div class="dag-info">
