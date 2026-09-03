@@ -335,7 +335,7 @@ function renderLijst(){
     ${statsHtml}
     ${lijstHtml}`;
 
-  document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; render(); document.getElementById('zoek-inp')?.focus(); });
+  document.getElementById('zoek-inp')?.addEventListener('input', e=>{ const s=e.target.selectionStart,se=e.target.selectionEnd; zoek=e.target.value; render(); const el=document.getElementById('zoek-inp'); if(el){ el.focus(); el.setSelectionRange(s,se); } });
 }
 
 function revisieKaart(r){
