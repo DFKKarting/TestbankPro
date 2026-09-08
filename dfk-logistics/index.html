@@ -338,7 +338,9 @@ function verwerkFotoInput(input){
       c.getContext('2d').drawImage(img,0,0,w,h);
       fotoData = c.toDataURL('image/jpeg',0.75);
       const prev=document.getElementById('a-foto-preview');
-      if(prev) prev.innerHTML=`<img src="${fotoData}" style="max-width:100%;max-height:180px;border-radius:8px;border:1.5px solid #e5e7eb;margin-top:4px">`;
+      if(prev) prev.innerHTML=`<img src="${fotoData}" style="max-width:100%;max-height:180px;border-radius:8px;border:1.5px solid #e5e7eb;margin-top:8px">`;
+      const nm=document.getElementById('a-foto-naam');
+      if(nm) nm.textContent=file.name;
     };
     img.src = ev.target.result;
   };
@@ -657,7 +659,11 @@ function renderNieuw(){
         </div>
         <div class="field" style="grid-column:1/-1">
           <label class="field-label">Foto ter verduidelijking (optioneel)</label>
-          <input type="file" class="inp" id="a-foto" accept="image/*" capture="environment" onchange="verwerkFotoInput(this)" style="padding:6px 12px">
+          <input type="file" id="a-foto" accept="image/*" capture="environment" onchange="verwerkFotoInput(this)" style="display:none">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="btn-outline" onclick="document.getElementById('a-foto').click()" style="display:flex;align-items:center;gap:6px">&#128247; Maak foto</button>
+            <span id="a-foto-naam" style="font-size:12px;color:#6b7280"></span>
+          </div>
           <div id="a-foto-preview"></div>
         </div>
         <div class="actions-row">
