@@ -191,6 +191,7 @@ const PRIO = {
 };
 
 const PRIO_VOLGORDE = { urgent:0, hoog:1, normaal:2, laag:3 };
+const STATUS_VOLGORDE = { aangevraagd:0, klaarmaken:1, besteld:2, niet_op_voorraad:3, mee:4, geannuleerd:5 };
 
 let sb = null;
 let gebruiker = null;
@@ -594,7 +595,10 @@ function renderOverzicht(){
 
   let truckHtml = '';
   trucks.forEach(t=>{
-    const items = (perTruck[t.id]||[]).slice().sort((a,b)=>(PRIO_VOLGORDE[a.prioriteit]??2)-(PRIO_VOLGORDE[b.prioriteit]??2));
+    const items = (perTruck[t.id]||[]).slice().sort((a,b)=>{
+      const ss=(STATUS_VOLGORDE[a.status]??99)-(STATUS_VOLGORDE[b.status]??99); if(ss!==0) return ss;
+      return (PRIO_VOLGORDE[a.prioriteit]??2)-(PRIO_VOLGORDE[b.prioriteit]??2);
+    });
     if(!items.length) return;
     truckHtml += `<div class="truck-section">
       <div class="truck-title">&#x1F69B; ${esc(t.naam)} <span style="color:#6b7280;font-weight:400;font-size:12px">(${items.length})</span></div>
