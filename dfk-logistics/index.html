@@ -341,7 +341,7 @@ async function slaatAanvraagOp(e){
     aangevraagd_op: new Date().toISOString(),
   }).select().single();
   if(error){ await toonMelding('Opslaan mislukt: '+error.message); return; }
-  if(data){ aanvragen.unshift(data); bouwOnderdeelSuggesties(); }
+  if(data){ aanvragen.unshift(data); }
   navigeer('overzicht');
 }
 
