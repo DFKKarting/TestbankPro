@@ -765,6 +765,7 @@ function renderWerkplaats(){
               <span class="badge-prio ${p.cls}">${p.label}</span>
               ${a.opmerking?`<span style="font-style:italic">${esc(a.opmerking)}</span>`:''}
             </div>
+            ${a.foto?`<img src="${a.foto}" style="margin-top:8px;max-width:100%;max-height:140px;border-radius:8px;border:1.5px solid #e5e7eb;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'140px':'none'">`:''}
           </div>
           <div class="aanvraag-acties">${statusSelHtml(a.id,a.status)}</div>
         </div>`;
