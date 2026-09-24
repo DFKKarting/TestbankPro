@@ -284,7 +284,7 @@ async function dbMotorenLoad(){
   const{data,error}=await sb.from('motoren').select('*');
   if(error){console.error(error);showSbFout('Motoren laden mislukt: '+error.message);return;}
   motorenCache={};
-  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam||'',status:r.status||'Actief'};});
+  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam||'',status:r.status||'Actief',eigenaarHistorie:r.eigenaar_historie||[]};});
   motorenUnsynced.clear();
   saveMotorenLocal();
   updateSyncIndicator();
@@ -293,14 +293,14 @@ async function dbMotorSave(mn,d){
   if(!mn)return;
   motorenCache[mn]=d;motorenUnsynced.add(mn);saveMotorenLocal();updateSyncIndicator();
   if(!sb)return;
-  const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam||'',status:d.status||'Actief',updated_at:new Date().toISOString()});
+  const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam||'',status:d.status||'Actief',eigenaar_historie:d.eigenaarHistorie||[],updated_at:new Date().toISOString()});
   if(error){console.error(error);showSbFout('Motor opslaan mislukt: '+error.message);scheduleSyncRetry();}
   else{motorenUnsynced.delete(mn);updateSyncIndicator();}
 }
 async function syncMotorenNaarSupabase(){
   if(!sb)return;
   for(const[mn,d]of Object.entries(motorenCache)){
-    const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam||'',status:d.status||'Actief',updated_at:new Date().toISOString()});
+    const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam||'',status:d.status||'Actief',eigenaar_historie:d.eigenaarHistorie||[],updated_at:new Date().toISOString()});
     if(!error)motorenUnsynced.delete(mn);
   }
   updateSyncIndicator();
@@ -359,7 +359,7 @@ function getMotorData(mn){
   const saved=motorenCache[mn]||{};
   const motorSessies=sessies.filter(s=>s.motorNummer===mn);
   const first=motorSessies[0]||{};
-  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam!==undefined?saved.motorNaam:(first.motorNaam||'')};
+  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam!==undefined?saved.motorNaam:(first.motorNaam||''),eigenaarHistorie:saved.eigenaarHistorie||[]};
 }
 function dfkGroepToggle(key){
   if(dfkIngeklapt.has(key))dfkIngeklapt.delete(key);else dfkIngeklapt.add(key);
@@ -577,6 +577,7 @@ function renderMotorDetail(){
   const motorType=cached.motorType||m.motorType||'';
   const motorNaam=cached.motorNaam||m.motorNaam||'';
   const motorStatus=cached.status||'Actief';
+  const eigenaarHistorie=cached.eigenaarHistorie||[];
   const motorSessies=sessies.filter(s=>s.motorNummer===m.motorNummer).sort((a,b)=>(b.runs?.[0]?.datum||'').localeCompare(a.runs?.[0]?.datum||''));
   const totalRuns=motorSessies.reduce((n,s)=>n+(s.runs?.length||0),0);
   const bestHP=motorSessies.reduce((b,s)=>{const r=bestRun(s.runs);return Math.max(b,parseFloat(r?.vermogen)||0);},0)||null;
@@ -611,6 +612,7 @@ function renderMotorDetail(){
           ${motorMerk?`<div class="meta-row"><span class="meta-row-lbl">Merk</span><span class="meta-row-val">${esc(motorMerk)}</span></div>`:''}
           ${motorType?`<div class="meta-row"><span class="meta-row-lbl">Type</span><span class="meta-row-val">${esc(motorType)}</span></div>`:''}
           ${motorNaam?`<div class="meta-row"><span class="meta-row-lbl">Naam</span><span class="meta-row-val">${esc(motorNaam)}</span></div>`:''}
+          ${eigenaarHistorie.length?`<div class="meta-row" style="align-items:flex-start"><span class="meta-row-lbl">Vorige eigenaars</span><span class="meta-row-val" style="text-align:right">${[...eigenaarHistorie].reverse().map(h=>`<div style="font-size:12px">${esc(h.klant)} <span style="color:#9ca3af;font-weight:400">tot ${h.tot}</span></div>`).join('')}</span></div>`:''}
         </div>`:''}
       </div>
       <div style="display:flex;gap:14px;align-items:flex-start;flex-shrink:0;padding-top:2px">
@@ -682,13 +684,18 @@ function toggleMotorEdit(){
 }
 async function motorEditSave(){
   const m=selectedMotor;if(!m)return;
-  const oudeKlant=motorenCache[m.motorNummer]?.klant||m.klant||'';
+  const cached=motorenCache[m.motorNummer]||{};
+  const oudeKlant=cached.klant||m.klant||'';
   const klant=document.getElementById('me-klant')?.value.trim()||'';
   const motorMerk=document.getElementById('me-merk')?.value.trim()||'';
   const motorType=document.getElementById('me-type')?.value.trim()||'';
   const motorNaam=document.getElementById('me-naam')?.value.trim()||'';
   const status=document.getElementById('me-status')?.value||'Actief';
-  await dbMotorSave(m.motorNummer,{klant,motorMerk,motorType,motorNaam,status});
+  let eigenaarHistorie=cached.eigenaarHistorie||[];
+  if(klant!==oudeKlant&&oudeKlant){
+    eigenaarHistorie=[...eigenaarHistorie,{klant:oudeKlant,tot:new Date().toISOString().slice(0,10)}];
+  }
+  await dbMotorSave(m.motorNummer,{klant,motorMerk,motorType,motorNaam,status,eigenaarHistorie});
   if(klant!==oudeKlant){
     const teUpdaten=[];
     sessies=sessies.map(s=>{if(s.motorNummer!==m.motorNummer)return s;const b={...s,klant};teUpdaten.push(b);return b;});
