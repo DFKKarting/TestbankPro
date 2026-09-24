@@ -647,10 +647,10 @@ function renderMotorDetail(){
 
 function renderMotorRevisies(mn){
   const rev = motorRevisies.filter(r=>r.motorNummer===mn).sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
-  const rijen = rev.map(r=>`<tr>
+  const rijen = rev.map(r=>`<tr style="cursor:pointer" onclick="naarRevisie('${esc(r.id)}')" title="Revisie openen">
     <td style="white-space:nowrap;color:#374151">${r.datum?fmtDt(r.datum+'T00:00:00'):'—'}</td>
     <td style="color:#6b7280">${r.motorUren?esc(r.motorUren)+' u':'—'}</td>
-<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280">${Array.isArray(r.onderdelen)?esc(r.onderdelen.join(', '))||'—':esc(r.onderdelen||'—')}</td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280">${Array.isArray(r.onderdelen)?esc(r.onderdelen.join(', '))||'—':esc(r.onderdelen||'—')}</td>
     <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280">${esc(r.opmerkingen||'')}</td>
   </tr>`).join('');
   return `<div style="margin-top:24px">
@@ -667,6 +667,10 @@ function renderMotorRevisies(mn){
 
 function naarNieuweRevisie(mn){
   localStorage.setItem('tbp_revisie_motor', mn);
+  window.location.href='/revisie/';
+}
+function naarRevisie(id){
+  localStorage.setItem('tbp_revisie_open', id);
   window.location.href='/revisie/';
 }
 

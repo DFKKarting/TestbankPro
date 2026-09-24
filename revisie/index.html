@@ -838,7 +838,10 @@ async function init(){
   }catch{window.location.href='/';return;}
   await Promise.all([laadMotoren(), laadRevisies(), laadOnderdelenAC()]);
   const voorMotor = localStorage.getItem('tbp_revisie_motor');
-  if(voorMotor){ localStorage.removeItem('tbp_revisie_motor'); nieuwRevisie(voorMotor); } else { render(); }
+  const openId = localStorage.getItem('tbp_revisie_open');
+  if(openId){ localStorage.removeItem('tbp_revisie_open'); bewerkRevisie(openId); }
+  else if(voorMotor){ localStorage.removeItem('tbp_revisie_motor'); nieuwRevisie(voorMotor); }
+  else { render(); }
 }
 init();
 </script>
