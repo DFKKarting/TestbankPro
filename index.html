@@ -411,19 +411,22 @@ function acGet(key){
 }
 function acSave(key,val){ /* autocomplete komt uit Supabase data */ }
 function acList(){ return ''; }
-function acInline(el,key,onAccept){
+function acInline(el,key,onAccept,wordMatch){
   el.addEventListener('input',function(e){
     if(e.inputType&&(e.inputType.startsWith('delete')||e.inputType==='insertFromPaste')) return;
     const val=this.value; if(!val) return;
-    const match=acGet(key).find(s=>s.toLowerCase().startsWith(val.toLowerCase()));
-    if(!match) return;
-    if(match.toLowerCase()===val.toLowerCase()){
-      if(onAccept) onAccept(match);
-      return;
+    const vl=val.toLowerCase();
+    const candidates=acGet(key);
+    let match=candidates.find(s=>s.toLowerCase().startsWith(vl));
+    let wordHit=false;
+    if(!match&&wordMatch){
+      match=candidates.find(s=>s.toLowerCase().split(/\s+/).some(w=>w.startsWith(vl)));
+      if(match) wordHit=true;
     }
-    const start=val.length;
+    if(!match) return;
+    if(match.toLowerCase()===vl){ if(onAccept) onAccept(match); return; }
     this.value=match;
-    this.setSelectionRange(start,match.length);
+    this.setSelectionRange(wordHit?0:val.length,match.length);
   });
   el.addEventListener('keydown',function(e){
     if((e.key==='Enter'||e.key==='Tab')&&this.selectionStart!==this.selectionEnd){
@@ -1138,7 +1141,8 @@ function renderNieuw(){
     </div>`:''}
   </div>`;
   acInline(document.getElementById('sf-mn'),'motorNummer',mn=>mnMapFill(mn));
-  [['sf-kl','klant'],['sf-mm','motorMerk'],['sf-mt','motorType'],['sf-mn2','motorNaam'],['sf-ca','carbu']].forEach(([id,key])=>acInline(document.getElementById(id),key));
+  acInline(document.getElementById('sf-kl'),'klant',undefined,true);
+  [['sf-mm','motorMerk'],['sf-mt','motorType'],['sf-mn2','motorNaam'],['sf-ca','carbu']].forEach(([id,key])=>acInline(document.getElementById(id),key));
   document.getElementById('sf-mn').addEventListener('change', e=>mnMapFill(e.target.value.trim()));
   document.getElementById('sf-mt').addEventListener('change', e=>carbuDefaultFill(e.target.value.trim()));
   document.getElementById('sf-mt').addEventListener('blur',   e=>carbuDefaultFill(e.target.value.trim()));

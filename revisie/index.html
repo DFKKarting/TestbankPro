@@ -229,14 +229,20 @@ function acKlanten(){ return [...new Set(Object.values(motorenCache).map(m=>m.kl
 function acMotorMerken(){ return [...new Set(Object.values(motorenCache).map(m=>m.motorMerk).filter(Boolean))].sort(); }
 function acMotorTypes(){ return [...new Set(Object.values(motorenCache).map(m=>m.motorType).filter(Boolean))].sort(); }
 
-function acInline(el, getVals, onAccept){
+function acInline(el, getVals, onAccept, wordMatch){
   el.addEventListener('input', function(e){
     if(e.inputType&&(e.inputType.startsWith('delete')||e.inputType==='insertFromPaste')) return;
     const val=this.value; if(!val) return;
-    const match=getVals().find(s=>s.toLowerCase().startsWith(val.toLowerCase()));
-    if(!match||match.toLowerCase()===val.toLowerCase()){ if(match&&onAccept) onAccept(match); return; }
-    const start=val.length;
-    const sy=window.scrollY; this.value=match; this.setSelectionRange(start,match.length); window.scrollTo(0,sy);
+    const vl=val.toLowerCase();
+    const candidates=getVals();
+    let match=candidates.find(s=>s.toLowerCase().startsWith(vl));
+    let wordHit=false;
+    if(!match&&wordMatch){
+      match=candidates.find(s=>s.toLowerCase().split(/\s+/).some(w=>w.startsWith(vl)));
+      if(match) wordHit=true;
+    }
+    if(!match||match.toLowerCase()===vl){ if(match&&onAccept) onAccept(match); return; }
+    const sy=window.scrollY; this.value=match; this.setSelectionRange(wordHit?0:val.length,match.length); window.scrollTo(0,sy);
   });
   el.addEventListener('keydown', function(e){
     if((e.key==='Enter'||e.key==='Tab')&&this.selectionStart!==this.selectionEnd){
@@ -474,7 +480,7 @@ function renderForm(){
   renderOnderdelenLijst();
   acInline(document.getElementById('f-mn'), acMotorNummers, mn=>mnFill(mn));
   document.getElementById('f-mn').addEventListener('change', e=>mnFill(e.target.value.trim()));
-  acInline(document.getElementById('f-kl'), acKlanten);
+  acInline(document.getElementById('f-kl'), acKlanten, undefined, true);
   acInline(document.getElementById('f-merk'), acMotorMerken);
   acInline(document.getElementById('f-type'), acMotorTypes);
   const ondInp = document.getElementById('f-ond-inp');
