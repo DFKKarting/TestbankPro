@@ -218,10 +218,12 @@ function getKlanten() {
     if (!map[k]) map[k] = { naam: k, sessies: [], motoren: new Set() };
     map[k].motoren.add(mn);
   });
+  const achternaam = n => (n||'').trim().split(' ')[0] || '';
   return Object.values(map).sort((a, b) => {
     if (!a.naam && b.naam) return 1;
     if (a.naam && !b.naam) return -1;
-    return a.naam.localeCompare(b.naam, 'nl');
+    const cmp = achternaam(a.naam).localeCompare(achternaam(b.naam), 'nl', {sensitivity:'base'});
+    return cmp !== 0 ? cmp : a.naam.localeCompare(b.naam, 'nl');
   });
 }
 
