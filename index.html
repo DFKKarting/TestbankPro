@@ -630,7 +630,7 @@ async function loadAndShow() {
     const naam = profRes.data?.naam || user.email.split('@')[0];
     document.getElementById('header-naam').textContent = naam;
     const rollen = new Set((rolRes.data||[]).map(r=>r.rol));
-    if (rollen.has('admin')) document.getElementById('nav-materiaal').style.display = '';
+    if (rollen.has('admin') || rollen.has('dfk-logistics')) document.getElementById('nav-materiaal').style.display = '';
 
     if (rollen.has('admin') || rollen.has('dfk-sales')) document.getElementById('nav-sales-wrap').style.display = '';
   }
@@ -1335,13 +1335,15 @@ function ssCompress(file, onDone) {
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
-      const maxW=1920,maxH=1200;
+      const maxW=1200,maxH=900;
       let w=img.width,h=img.height;
       if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
       if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
       const cvs=document.createElement('canvas');cvs.width=w;cvs.height=h;
       cvs.getContext('2d').drawImage(img,0,0,w,h);
-      onDone(cvs.toDataURL('image/jpeg',0.82));
+      let data=cvs.toDataURL('image/jpeg',0.72);
+      if(data.length>400000) data=cvs.toDataURL('image/jpeg',0.50);
+      onDone(data);
     };
     img.src=e.target.result;
   };

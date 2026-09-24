@@ -160,30 +160,20 @@ function render(){
   else renderForm();
 }
 
-function renderLijst(){
+function renderCarbuResultaten(){
   const gefilterd = zoek.trim()
     ? carbus.filter(c=>[c.naam,c.merk,c.model,c.motorType].join(' ').toLowerCase().includes(zoek.toLowerCase()))
     : [...carbus];
-
-  // Groepeer op motortype
   const groepen = {};
   gefilterd.forEach(c=>{
     const k = c.motorType?.trim() || '(geen motortype)';
     if(!groepen[k]) groepen[k]=[];
     groepen[k].push(c);
   });
-
   const leeg = carbus.length===0;
-  document.getElementById('main').innerHTML = `
-    <div class="head-row">
-      <h2 class="page-title">Carburatoren</h2>
-      <div class="zoek-wrap">
-        <span class="zoek-icon">🔍</span>
-        <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op naam, merk, type…" value="${esc(zoek)}">
-      </div>
-      <button class="btn-blauw" onclick="nieuwCarbu()">+ Nieuwe carburator</button>
-    </div>
-    ${leeg ? `
+  const res = document.getElementById('carbu-resultaten');
+  if(!res) return;
+  res.innerHTML = leeg ? `
       <div class="empty-state">
         <div class="empty-icon">🔧</div>
         <div class="empty-title">Nog geen carburatoren</div>
@@ -192,10 +182,23 @@ function renderLijst(){
       Object.entries(groepen).sort(([a],[b])=>a.localeCompare(b)).map(([groep,lijst])=>`
         <div class="sectie-label">${esc(groep)}</div>
         ${lijst.sort((a,b)=>a.naam.localeCompare(b.naam)).map(c=>carbuKaart(c)).join('')}
-      `).join('')
-    }`;
-
-  document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; render(); const el=document.getElementById('zoek-inp'); el?.focus(); });
+      `).join('');
+}
+function renderLijst(){
+  if(!document.getElementById('carbu-resultaten')){
+    document.getElementById('main').innerHTML = `
+      <div class="head-row">
+        <h2 class="page-title">Carburatoren</h2>
+        <div class="zoek-wrap">
+          <span class="zoek-icon">🔍</span>
+          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op naam, merk, type…" value="${esc(zoek)}">
+        </div>
+        <button class="btn-blauw" onclick="nieuwCarbu()">+ Nieuwe carburator</button>
+      </div>
+      <div id="carbu-resultaten"></div>`;
+    document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; renderCarbuResultaten(); });
+  }
+  renderCarbuResultaten();
 }
 
 function carbuKaart(c){

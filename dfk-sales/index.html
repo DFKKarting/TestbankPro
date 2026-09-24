@@ -758,7 +758,7 @@ function renderHistoriek(){
       </div>
       <div class="field">
         <label class="field-label">Klant</label>
-        <input class="inp" placeholder="Zoek op klantnaam..." value="${esc(histFilter.klant)}" oninput="histFilter.klant=this.value;render()">
+        <input class="inp" id="hist-zoek-klant" placeholder="Zoek op klantnaam..." value="${esc(histFilter.klant)}" oninput="histFilter.klant=this.value;render()">
       </div>
       <div class="field">
         <label class="field-label">Status</label>
