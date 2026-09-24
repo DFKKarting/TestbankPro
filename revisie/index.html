@@ -67,6 +67,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .ond-del:hover{color:#1d4ed8}
 .ond-add-row{display:flex;gap:8px;margin-top:8px}
 .ond-add-row .inp{flex:1}
+.ac-klant-wrap{position:relative}
+.ac-klant-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;max-height:220px;overflow-y:auto;display:none}
+.ac-klant-item{padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f3f4f6}
+.ac-klant-item:last-child{border-bottom:none}
+.ac-klant-item:hover,.ac-klant-item.actief{background:#eff6ff;color:#1d4ed8}
 .fact-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:inherit;white-space:nowrap;transition:opacity .15s;flex-shrink:0;align-self:flex-start}
 .fact-badge.niet{background:#fef3c7;color:#92400e}
 .fact-badge.ja{background:#d1fae5;color:#065f46}
@@ -229,6 +234,46 @@ function acKlanten(){ return [...new Set(Object.values(motorenCache).map(m=>m.kl
 function acMotorMerken(){ return [...new Set(Object.values(motorenCache).map(m=>m.motorMerk).filter(Boolean))].sort(); }
 function acMotorTypes(){ return [...new Set(Object.values(motorenCache).map(m=>m.motorType).filter(Boolean))].sort(); }
 
+function acDropdown(el, dropEl, getCandidates, onSelect){
+  function showDrop(items){
+    dropEl.innerHTML='';
+    if(!items.length){dropEl.style.display='none';return;}
+    let activeIdx=-1;
+    items.forEach((s,i)=>{
+      const d=document.createElement('div');
+      d.className='ac-klant-item'; d.textContent=s;
+      d.addEventListener('mousedown',e=>e.preventDefault());
+      d.addEventListener('click',()=>pick(s));
+      d.addEventListener('mouseover',()=>setActive(i));
+      dropEl.appendChild(d);
+    });
+    dropEl.style.display='block';
+    function setActive(i){
+      activeIdx=i;
+      [...dropEl.children].forEach((c,j)=>c.classList.toggle('actief',j===i));
+    }
+    el._acActive=()=>activeIdx>=0?items[activeIdx]:null;
+    el._acMove=(dir)=>setActive(Math.max(0,Math.min(items.length-1,activeIdx+dir)));
+  }
+  function pick(val){
+    el.value=val; dropEl.style.display='none';
+    if(onSelect) onSelect(val);
+  }
+  el.addEventListener('input',()=>{
+    const val=el.value.trim(); if(!val){dropEl.style.display='none';return;}
+    const vl=val.toLowerCase();
+    const hits=getCandidates().filter(s=>s.toLowerCase().startsWith(vl)||s.toLowerCase().split(/\s+/).some(w=>w.startsWith(vl))).slice(0,8);
+    showDrop(hits);
+  });
+  el.addEventListener('keydown',e=>{
+    if(dropEl.style.display==='none') return;
+    if(e.key==='ArrowDown'){e.preventDefault();el._acMove?.(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();el._acMove?.(-1);}
+    else if(e.key==='Enter'){const v=el._acActive?.();if(v){e.preventDefault();pick(v);}}
+    else if(e.key==='Escape'){dropEl.style.display='none';}
+  });
+  el.addEventListener('blur',()=>setTimeout(()=>dropEl.style.display='none',150));
+}
 function acInline(el, getVals, onAccept, wordMatch){
   el.addEventListener('input', function(e){
     if(e.inputType&&(e.inputType.startsWith('delete')||e.inputType==='insertFromPaste')) return;
@@ -414,9 +459,9 @@ function renderForm(){
             <label class="field-label">Motornummer *</label>
             <input class="inp" id="f-mn" placeholder="bijv. 001" value="${esc(r.motorNummer||'')}" autocomplete="off">
           </div>
-          <div class="field">
+          <div class="field ac-klant-wrap">
             <label class="field-label">Klantnaam</label>
-            <input class="inp" id="f-kl" placeholder="bijv. DFK1" value="${esc(r.klant||'')}" autocomplete="off">
+            <input class="inp" id="f-kl" placeholder="bijv. DFK1" value="${esc(r.klant||'')}" autocomplete="off"><div class="ac-klant-drop" id="ac-f-kl-drop"></div>
           </div>
         </div>
         <div class="form-grid" style="margin-top:14px">
@@ -480,7 +525,8 @@ function renderForm(){
   renderOnderdelenLijst();
   acInline(document.getElementById('f-mn'), acMotorNummers, mn=>mnFill(mn));
   document.getElementById('f-mn').addEventListener('change', e=>mnFill(e.target.value.trim()));
-  acInline(document.getElementById('f-kl'), acKlanten, undefined, true);
+  const fKlEl=document.getElementById('f-kl'), fKlDrop=document.getElementById('ac-f-kl-drop');
+  if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten);
   acInline(document.getElementById('f-merk'), acMotorMerken);
   acInline(document.getElementById('f-type'), acMotorTypes);
   const ondInp = document.getElementById('f-ond-inp');
