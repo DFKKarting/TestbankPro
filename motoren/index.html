@@ -359,7 +359,7 @@ function getMotorData(mn){
   const saved=motorenCache[mn]||{};
   const motorSessies=sessies.filter(s=>s.motorNummer===mn);
   const first=motorSessies[0]||{};
-  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam||first.motorNaam||''};
+  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam!==undefined?saved.motorNaam:(first.motorNaam||'')};
 }
 function dfkGroepToggle(key){
   if(dfkIngeklapt.has(key))dfkIngeklapt.delete(key);else dfkIngeklapt.add(key);
