@@ -284,7 +284,7 @@ async function dbMotorenLoad(){
   const{data,error}=await sb.from('motoren').select('*');
   if(error){console.error(error);showSbFout('Motoren laden mislukt: '+error.message);return;}
   motorenCache={};
-  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam||'',status:r.status||'Actief',eigenaarHistorie:r.eigenaar_historie||[]};});
+  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam??null,status:r.status||'Actief',eigenaarHistorie:r.eigenaar_historie||[]};});
   motorenUnsynced.clear();
   saveMotorenLocal();
   updateSyncIndicator();
@@ -293,7 +293,7 @@ async function dbMotorSave(mn,d){
   if(!mn)return;
   motorenCache[mn]=d;motorenUnsynced.add(mn);saveMotorenLocal();updateSyncIndicator();
   if(!sb)return;
-  const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam||'',status:d.status||'Actief',eigenaar_historie:d.eigenaarHistorie||[],updated_at:new Date().toISOString()});
+  const{error}=await sb.from('motoren').upsert({motor_nummer:mn,klant:d.klant||'',motor_merk:d.motorMerk||'',motor_type:d.motorType||'',motor_naam:d.motorNaam??null,status:d.status||'Actief',eigenaar_historie:d.eigenaarHistorie||[],updated_at:new Date().toISOString()});
   if(error){console.error(error);showSbFout('Motor opslaan mislukt: '+error.message);scheduleSyncRetry();}
   else{motorenUnsynced.delete(mn);updateSyncIndicator();}
 }
@@ -359,7 +359,7 @@ function getMotorData(mn){
   const saved=motorenCache[mn]||{};
   const motorSessies=sessies.filter(s=>s.motorNummer===mn);
   const first=motorSessies[0]||{};
-  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam!==undefined?saved.motorNaam:(first.motorNaam||''),eigenaarHistorie:saved.eigenaarHistorie||[]};
+  return{motorNummer:mn,klant:saved.klant||first.klant||'',motorMerk:saved.motorMerk||first.motorMerk||'',motorType:saved.motorType||first.motorType||'',motorNaam:saved.motorNaam!==null&&saved.motorNaam!==undefined?saved.motorNaam:(first.motorNaam||''),eigenaarHistorie:saved.eigenaarHistorie||[]};
 }
 function dfkGroepToggle(key){
   if(dfkIngeklapt.has(key))dfkIngeklapt.delete(key);else dfkIngeklapt.add(key);
