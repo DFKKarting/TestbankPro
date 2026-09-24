@@ -284,7 +284,7 @@ async function dbMotorenLoad(){
   const{data,error}=await sb.from('motoren').select('*');
   if(error){console.error(error);showSbFout('Motoren laden mislukt: '+error.message);return;}
   motorenCache={};
-  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam??null,status:r.status||'Actief',eigenaarHistorie:r.eigenaar_historie||[]};});
+  data.forEach(r=>{motorenCache[r.motor_nummer]={klant:r.klant||'',motorMerk:r.motor_merk||'',motorType:r.motor_type||'',motorNaam:r.motor_naam||null,status:r.status||'Actief',eigenaarHistorie:r.eigenaar_historie||[]};});
   motorenUnsynced.clear();
   saveMotorenLocal();
   updateSyncIndicator();
