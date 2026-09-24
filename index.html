@@ -1594,7 +1594,8 @@ function hervattSessie(){
 function herstarTimer(){
   if(!selected) return;
   stopSessieTimer();
-  sessieStartTijd = Date.now();
+  const eerderGelopen = (selected.duur || 0) * 1000;
+  sessieStartTijd = Date.now() - eerderGelopen;
   sessieTimerSessieId = selected.id;
   sessiePauzeStart = null;
   sessiePauzeeTotaal = 0;
