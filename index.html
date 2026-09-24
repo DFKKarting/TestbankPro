@@ -852,15 +852,17 @@ function runRowList(r,i,best){
     <td style="color:#6b7280;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.opmerkingen||'')}</td>
   </tr>`;
 }
-function runRowDetail(r,i,best){
+function runRowDetail(r,i,best,sessieCarbu){
   const isBest=best&&r.id===best.id;
   const isManueel=!!r.isBest;
   const sterTip=isManueel?'Markering verwijderen':'Als beste run markeren';
+  const carbuTxt=r.carbu||(sessieCarbu||'');
+  const carbuHtml=carbuTxt?`<span style="color:#374151;font-weight:600">${esc(carbuTxt)}</span>`:'<span style="color:#d1d5db">—</span>';
   return `<tr class="${isBest?'best-row':''}" data-run-row="${r.id}">
     <td style="color:#9ca3af;font-weight:600">${i+1}</td>
     <td style="color:#374151;font-weight:700">${testNr(r.bestandsnaam)||'<span style="color:#9ca3af;font-style:italic;font-weight:400;font-size:11px">Geen testnummer</span>'}</td>
     <td style="white-space:nowrap;color:#374151">${fmtTime(r.datum)}</td>
-    <td style="color:#374151;font-weight:600;white-space:nowrap">${r.carbu?esc(r.carbu):'<span style="color:#d1d5db">—</span>'}</td>
+    <td style="white-space:nowrap">${carbuHtml}</td>
     <td><span style="font-size:14px;font-weight:${isBest?800:600};color:${isBest?'#2563eb':'#111827'}">${r.vermogen||'—'} <span style="font-size:11px;font-weight:400">HP</span></span>${r.vermogenRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.vermogenRpm).toLocaleString()} rpm</span>`:''}</td>
     <td><span style="font-size:14px;font-weight:600;color:#111827">${r.koppel||'—'} <span style="font-size:11px;font-weight:400">Nm</span></span>${r.koppelRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.koppelRpm).toLocaleString()} rpm</span>`:''}</td>
     <td style="color:#374151">${r.toeren?Number(r.toeren).toLocaleString():'—'}</td>
@@ -1023,7 +1025,7 @@ function renderSavedRunsInForm(){
         <tbody>${savedRuns.map((r,i)=>`<tr ${best&&r.id===best.id?'class="best-row"':''}>
           <td style="color:#9ca3af;font-weight:600">${i+1}</td>
           <td style="white-space:nowrap;color:#374151">${fmtTime(r.datum)}</td>
-          <td style="color:#374151;font-weight:600">${r.carbu?esc(r.carbu):'<span style="color:#d1d5db">—</span>'}</td>
+          <td style="color:#374151;font-weight:600">${esc(r.carbu||(sessie?.carbu||''))||'<span style="color:#d1d5db">—</span>'}</td>
           <td><span style="font-weight:${best&&r.id===best.id?800:600};color:${best&&r.id===best.id?'#2563eb':'#111827'}">${r.vermogen||'—'} <span style="font-size:11px;font-weight:400">HP</span></span></td>
           <td><span style="font-weight:600;color:#111827">${r.koppel||'—'} <span style="font-size:11px;font-weight:400">Nm</span></span></td>
           <td style="color:#6b7280">${esc(r.opmerkingen||'')}</td>
@@ -1268,7 +1270,7 @@ function renderDetail(){
     <div style="margin-bottom:18px"><div class="sec-label">Alle runs (${runs.length})</div>
       <div class="tbl-border"><div class="tbl-scroll"><table class="tbl">
         <thead><tr>${['#','Test #','Tijd','Carbu','Vermogen','Koppel','Max RPM','Opmerking',''].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${runs.map((r,i)=>runRowDetail(r,i,best)).join('')}</tbody>
+        <tbody>${runs.map((r,i)=>runRowDetail(r,i,best,selected.carbu)).join('')}</tbody>
       </table></div></div>
     </div>
 
