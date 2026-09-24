@@ -400,13 +400,19 @@ function startRealtime() {
 
 // ── KLANT HERNOEMEN ───────────────────────────────────────────────────────────
 function hernoemKlant(oudNaam) {
+  const spatie = oudNaam.indexOf(' ');
+  const oudVoor = spatie < 0 ? oudNaam : oudNaam.slice(0, spatie);
+  const oudAchter = spatie < 0 ? '' : oudNaam.slice(spatie + 1);
   const modal = document.createElement('div');
   modal.id = 'hernoem-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.2);padding:24px">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(0,0,0,.2);padding:24px">
       <div style="font-size:16px;font-weight:800;color:#111827;margin-bottom:16px">Naam aanpassen</div>
-      <input class="inp" id="hernoem-inp" value="${esc(oudNaam)}" autocomplete="off" style="width:100%;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div><label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">Voornaam *</label><input class="inp" id="hernoem-voor" value="${esc(oudVoor)}" autocomplete="off" style="width:100%"></div>
+        <div><label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">Achternaam</label><input class="inp" id="hernoem-achter" value="${esc(oudAchter)}" autocomplete="off" style="width:100%"></div>
+      </div>
       <div style="display:flex;gap:10px">
         <button class="btn-blauw" id="hernoem-ok" style="flex:1">Opslaan</button>
         <button class="btn-outline" onclick="document.getElementById('hernoem-modal').remove()" style="flex:1">Annuleren</button>
@@ -414,10 +420,11 @@ function hernoemKlant(oudNaam) {
     </div>`;
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   document.body.appendChild(modal);
-  const inp = document.getElementById('hernoem-inp');
-  inp.focus(); inp.select();
+  const inpVoor = document.getElementById('hernoem-voor');
+  const inpAchter = document.getElementById('hernoem-achter');
+  inpVoor.focus(); inpVoor.select();
   const sla = async () => {
-    const nieuwNaam = inp.value.trim();
+    const nieuwNaam = [inpVoor.value.trim(), inpAchter.value.trim()].filter(Boolean).join(' ');
     if (!nieuwNaam || nieuwNaam === oudNaam) { modal.remove(); return; }
     document.getElementById('hernoem-ok').disabled = true;
     await Promise.all([
@@ -431,7 +438,7 @@ function hernoemKlant(oudNaam) {
     navigeer('klant-detail');
   };
   document.getElementById('hernoem-ok').addEventListener('click', sla);
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') sla(); if (e.key === 'Escape') modal.remove(); });
+  [inpVoor, inpAchter].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') sla(); if (e.key === 'Escape') modal.remove(); }));
 }
 
 // ── AUTH + INIT ───────────────────────────────────────────────────────────────

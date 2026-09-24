@@ -864,11 +864,14 @@ function renderBeheerCircuits(){
   </table></div>` : `<div class="empty-state"><div style="font-weight:700">Nog geen circuits</div></div>`}`;
 }
 
+function splitNaam(naam){ const s=(naam||'').trim(); const i=s.indexOf(' '); return i<0?{voornaam:s,achternaam:''}:{voornaam:s.slice(0,i),achternaam:s.slice(i+1)}; }
 function renderBeheerKlanten(){
   const rows = klanten.map(k=>{
+    const {voornaam,achternaam}=splitNaam(k.naam);
     if(bewerkKlantId===k.id) return `<div class="user-row" style="flex-direction:column;align-items:stretch;gap:10px">
-      <form onsubmit="slaKlantBewerkingOp(event,'${k.id}')" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
-        <div class="field"><label class="field-label">Naam *</label><input class="inp" name="naam" value="${esc(k.naam)}" required></div>
+      <form onsubmit="slaKlantBewerkingOp(event,'${k.id}')" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:end">
+        <div class="field"><label class="field-label">Voornaam *</label><input class="inp" name="voornaam" value="${esc(voornaam)}" required></div>
+        <div class="field"><label class="field-label">Achternaam</label><input class="inp" name="achternaam" value="${esc(achternaam)}"></div>
         <div class="field"><label class="field-label">E-mail</label><input class="inp" name="email" type="email" value="${esc(k.email||'')}"></div>
         <div class="field"><label class="field-label">Telefoon</label><input class="inp" name="tel" value="${esc(k.telefoon||'')}"></div>
         <button class="btn-blauw" type="submit" style="white-space:nowrap">Opslaan</button>
@@ -890,7 +893,8 @@ function renderBeheerKlanten(){
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin-bottom:14px">Nieuwe klant</div>
     <form id="form-klant">
       <div class="form-grid" style="margin-bottom:14px">
-        <div class="field"><label class="field-label">Naam *</label><input class="inp" id="k-naam" placeholder="Klantnaam" required autocomplete="off"></div>
+        <div class="field"><label class="field-label">Voornaam *</label><input class="inp" id="k-voornaam" placeholder="Voornaam" required autocomplete="off"></div>
+        <div class="field"><label class="field-label">Achternaam</label><input class="inp" id="k-achternaam" placeholder="Achternaam" autocomplete="off"></div>
         <div class="field"><label class="field-label">E-mail</label><input class="inp" id="k-email" type="email" placeholder="klant@email.com" autocomplete="off"></div>
         <div class="field"><label class="field-label">Telefoon</label><input class="inp" id="k-tel" placeholder="+32 ..." autocomplete="off"></div>
       </div>
@@ -938,13 +942,18 @@ async function verwijderCircuit(id){
 }
 async function voegKlantToe(e){
   e.preventDefault(); const f=e.target;
-  const {data,error}=await sb.from('verkoop_klanten').insert({naam:f.querySelector('#k-naam').value.trim(),email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
+  const voornaam=f.querySelector('#k-voornaam').value.trim();
+  const achternaam=f.querySelector('#k-achternaam').value.trim();
+  const naam=[voornaam,achternaam].filter(Boolean).join(' ');
+  const {data,error}=await sb.from('verkoop_klanten').insert({naam,email:f.querySelector('#k-email').value.trim()||null,telefoon:f.querySelector('#k-tel').value.trim()||null,actief:true}).select().single();
   if(error){await toonMelding('Fout: '+error.message);return;}
   klanten.push(data); klanten.sort((a,b)=>a.naam.localeCompare(b.naam,'nl')); f.reset(); render();
 }
 async function slaKlantBewerkingOp(e, id){
   e.preventDefault();
-  const naam = e.target.querySelector('[name="naam"]').value.trim();
+  const voornaam = e.target.querySelector('[name="voornaam"]').value.trim();
+  const achternaam = e.target.querySelector('[name="achternaam"]').value.trim();
+  const naam = [voornaam,achternaam].filter(Boolean).join(' ');
   const email = e.target.querySelector('[name="email"]').value.trim()||null;
   const telefoon = e.target.querySelector('[name="tel"]').value.trim()||null;
   const {error} = await sb.from('verkoop_klanten').update({naam,email,telefoon}).eq('id',id);
