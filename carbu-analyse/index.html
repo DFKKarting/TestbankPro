@@ -693,7 +693,7 @@ function renderBreakdown(score, analyse){
             <div class="score-bar" style="height:8px"><div class="score-bar-fill" style="width:${Math.round(v)}%;background:${kleurBalk(v)}"></div></div>
           </div>
           <div style="min-width:70px;text-align:right;font-size:13px;font-weight:700;color:${kleurBalk(v)}">${v.toFixed(1)}<span style="font-size:11px;color:#9ca3af;font-weight:400"> /100</span></div>
-          <div style="min-width:40px;text-align:right;font-size:11px;color:#9ca3af">×${ANALYSE_GEWICHTEN[k]||0}</div>
+          <div style="min-width:40px;text-align:right;font-size:11px;color:#9ca3af">${Math.round((ANALYSE_GEWICHTEN[k]||0)*100)}%</div>
           <div style="min-width:44px;text-align:right;font-size:13px;font-weight:700;color:#374151">${bijdrage.toFixed(1)}</div>
         </div>
         <div style="font-size:11px;color:#9ca3af;padding-left:0;line-height:1.4">${cfg.uitleg}</div>
@@ -705,7 +705,7 @@ function renderBreakdown(score, analyse){
       <div style="min-width:200px">Component / Waarde</div>
       <div style="flex:1">Score</div>
       <div style="min-width:70px;text-align:right">Score</div>
-      <div style="min-width:40px;text-align:right">Gewicht</div>
+      <div style="min-width:40px;text-align:right">% van score</div>
       <div style="min-width:44px;text-align:right">Bijdrage</div>
     </div>
     ${rijen}
