@@ -197,6 +197,7 @@ let huidigView = 'overzicht';
 let gekozenMotor = null;
 let gekozenCarbu = null;
 let chartInstantie = null;
+let carbuLijstLS = [];    // carburatoren uit localStorage (carburators-pagina)
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -232,8 +233,22 @@ function fromRow(r){
   };
 }
 
+function laadCarbuLijstLS(){
+  try{ carbuLijstLS = JSON.parse(localStorage.getItem('tbp_carburators')||'[]'); }
+  catch{ carbuLijstLS = []; }
+}
+function slaCarbuLijstLS(){ localStorage.setItem('tbp_carburators', JSON.stringify(carbuLijstLS)); }
+
+// Geeft alle bekende carbu-namen terug: unie van localStorage + sessiedata
+function alleCarbuNamen(){
+  const set = new Set(carbuLijstLS.map(c=>c.naam).filter(Boolean));
+  Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>set.add(c)));
+  return [...set].sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
+}
+
 async function laadData(){
   document.getElementById('db-status').innerHTML='<span class="db-dot" style="background:#10b981"></span>Supabase';
+  laadCarbuLijstLS();
   const [{data:sd},{data:md}] = await Promise.all([
     sb.from('sessies').select('*').order('created_at',{ascending:false}),
     sb.from('motoren').select('*')
@@ -243,6 +258,36 @@ async function laadData(){
   (md||[]).forEach(r=>{motorenCache[r.motor_nummer]=r;});
   verwerkCombinaties();
   berekenAlleScores();
+  render();
+}
+
+// ── CARBU HERNOEMEN ───────────────────────────────────────────────────────────
+async function hernoemCarbu(oudeNaam){
+  const nieuweNaam = prompt(`Nieuwe naam voor "${oudeNaam}":`, oudeNaam);
+  if(!nieuweNaam||nieuweNaam.trim()===oudeNaam) return;
+  const nieuw = nieuweNaam.trim();
+
+  // 1. Update localStorage
+  carbuLijstLS = carbuLijstLS.map(c=>c.naam===oudeNaam ? {...c, naam:nieuw} : c);
+  slaCarbuLijstLS();
+
+  // 2. Update alle Supabase sessies die deze carbu bevatten
+  if(sb){
+    const teUpdaten = sessies.filter(s=>
+      s.carbu===oudeNaam || (s.runs||[]).some(r=>r.carbu===oudeNaam)
+    );
+    for(const s of teUpdaten){
+      const nieuweRuns = (s.runs||[]).map(r=>r.carbu===oudeNaam ? {...r, carbu:nieuw} : r);
+      await sb.from('sessies').update({
+        carbu: s.carbu===oudeNaam ? nieuw : s.carbu,
+        runs: nieuweRuns
+      }).eq('id', s.id);
+    }
+  }
+
+  // 3. Herlaad data
+  await laadData();
+  gekozenCarbu = nieuw;
   render();
 }
 
@@ -897,24 +942,24 @@ function toonBreakdown(mn, cb){
 }
 
 function renderCarburateurAnalyse(){
-  // Verzamel alle unieke carburatoren
-  const carbuSet = new Set();
-  Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>carbuSet.add(c)));
-  const carbuLijst = [...carbuSet].sort();
+  // Alle carburatoren: unie van localStorage + sessiedata
+  const carbuLijst = alleCarbuNamen();
 
   if(!carbuLijst.length){
     document.getElementById('main').innerHTML=`
       <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
       ${subTabsHtml('carburateur')}
-      <div class="empty-state">Geen carburatoren gevonden.</div>`;
+      <div class="empty-state">Geen carburatoren gevonden. Voeg carburatoren toe via de Carburatoren-pagina.</div>`;
     return;
   }
-  const cb = gekozenCarbu || carbuLijst[0];
+  const cb = (gekozenCarbu && carbuLijst.includes(gekozenCarbu)) ? gekozenCarbu : carbuLijst[0];
 
-  // Motoren waarop deze carbu getest is
+  // Motoren waarop deze carbu getest is (met curvedata)
   const motorenMetCarbu = Object.keys(combinaties)
     .filter(mn=>combinaties[mn][cb])
     .sort((a,b)=>motorLabel(a).localeCompare(motorLabel(b),'nl'));
+
+  const isGetest = motorenMetCarbu.length > 0;
 
   // Chart series
   const chartSeries = motorenMetCarbu.slice(0,5).map((mn,i)=>{
@@ -942,25 +987,50 @@ function renderCarburateurAnalyse(){
       </tr>`;
   }).join('');
 
+  // Extra info uit localStorage
+  const lsInfo = carbuLijstLS.find(c=>c.naam===cb);
+  const lsDetail = lsInfo
+    ? `<div style="font-size:12px;color:#6b7280;margin-top:4px">${[lsInfo.merk,lsInfo.model,lsInfo.motorType].filter(Boolean).join(' · ')}</div>`
+    : '';
+
   const opts = carbuLijst.map(c=>`<option value="${esc(c)}"${c===cb?' selected':''}>${esc(c)}</option>`).join('');
 
   document.getElementById('main').innerHTML=`
     <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
     ${subTabsHtml('carburateur')}
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <label style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">Carburateur:</label>
-      <select class="sel" style="max-width:300px" onchange="gekozenCarbu=this.value;render()">${opts}</select>
-    </div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-val">${motorenMetCarbu.length}</div><div class="stat-lbl">Geteste motoren</div></div>
-      <div class="stat-card"><div class="stat-val">${gemScore>0?gemScore.toFixed(1):'—'}</div><div class="stat-lbl">Gemiddelde score</div></div>
+      <select class="sel" style="max-width:280px;flex:1" onchange="gekozenCarbu=this.value;render()">${opts}</select>
+      <button class="btn-sm" onclick="hernoemCarbu('${esc(cb)}')">✏️ Naam aanpassen</button>
     </div>
     <div class="card">
-      <div class="card-title">Prestaties van ${esc(cb)} per motor</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#111827">${esc(cb)}</div>
+          ${lsDetail}
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="stat-mini" style="text-align:center">
+            <div style="font-size:20px;font-weight:800">${motorenMetCarbu.length}</div>
+            <div style="font-size:11px;color:#6b7280">Geteste motoren</div>
+          </div>
+          ${gemScore>0?`<div class="stat-mini" style="text-align:center">
+            <div style="font-size:20px;font-weight:800;color:#059669">${gemScore.toFixed(1)}</div>
+            <div style="font-size:11px;color:#6b7280">Gem. score</div>
+          </div>`:''}
+          <div>
+            ${isGetest?'<span class="chip-gemeten">🟢 Getest</span>':'<span class="chip-geen">⬜ Nog niet getest</span>'}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${isGetest?`
+    <div class="card">
+      <div class="card-title">Prestaties per motor</div>
       <div class="tbl-scroll">
         <table class="tbl tbl-border">
           <thead><tr><th>Motor</th><th>Max HP</th><th>RPM HP</th><th>Max Nm</th><th>Runs</th><th>Score</th><th>Status</th></tr></thead>
-          <tbody>${tblRijen||'<tr><td colspan="7" style="text-align:center;padding:24px;color:#9ca3af">Geen data</td></tr>'}</tbody>
+          <tbody>${tblRijen}</tbody>
         </table>
       </div>
     </div>
@@ -968,7 +1038,12 @@ function renderCarburateurAnalyse(){
     <div class="card">
       <div class="card-title">HP-curve vergelijking</div>
       <div class="chart-wrap"><canvas id="carbu-chart"></canvas></div>
-    </div>` : ''}`;
+    </div>` : ''}` : `
+    <div class="empty-state" style="margin-top:8px">
+      <div style="font-size:32px;margin-bottom:10px">📋</div>
+      <div style="font-size:15px;font-weight:700;color:#374151;margin-bottom:6px">Nog geen meetdata</div>
+      <div style="font-size:13px">Deze carburateur is nog niet op een motor getest met curvedata.</div>
+    </div>`}`;
 
   if(motorenMetCarbu.length>1){
     setTimeout(()=>tekenChart('carbu-chart', chartSeries, 'hp'), 50);
