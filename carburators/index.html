@@ -146,14 +146,48 @@ const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 function uuid(){ if(typeof crypto!=='undefined'&&crypto.randomUUID) return crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);}); }
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
+let sb;
 let carbus = [];
 let view = 'lijst'; // 'lijst' | 'nieuw' | 'edit'
 let huidig = null;  // carburator in bewerking
 let zoek = '';
 
-const OPSLAG = 'tbp_carburators';
-function laadCarbus(){ try{ carbus = JSON.parse(localStorage.getItem(OPSLAG)||'[]'); }catch{ carbus=[]; } }
-function slaCarbus(){ localStorage.setItem(OPSLAG, JSON.stringify(carbus)); }
+// ── DB HELPERS ────────────────────────────────────────────────────────────────
+function dbNaarJs(r){
+  return { id:r.id, naam:r.naam||'', motorType:r.motor_type||'', merk:r.merk||'', model:r.model||'', baanHoog:r.baan_hoog||'', baanLaag:r.baan_laag||'', testHoog:r.test_hoog||'', testLaag:r.test_laag||'', opmerkingen:r.opmerkingen||'' };
+}
+function jsNaarDb(c){
+  return { id:c.id, naam:c.naam, motor_type:c.motorType||'', merk:c.merk||'', model:c.model||'', baan_hoog:c.baanHoog||'', baan_laag:c.baanLaag||'', test_hoog:c.testHoog||'', test_laag:c.testLaag||'', opmerkingen:c.opmerkingen||'', updated_at:new Date().toISOString() };
+}
+
+async function laadCarbus(){
+  const {data,error} = await sb.from('carburatoren').select('*').order('naam');
+  if(error){ console.error(error); carbus=[]; return; }
+  carbus = (data||[]).map(dbNaarJs);
+  // Eenmalige migratie vanuit localStorage
+  if(carbus.length===0){
+    try{
+      const ls = JSON.parse(localStorage.getItem('tbp_carburators')||'[]');
+      if(ls.length){
+        const {error:e2} = await sb.from('carburatoren').upsert(ls.map(jsNaarDb));
+        if(!e2){ carbus=ls; localStorage.removeItem('tbp_carburators'); }
+      }
+    }catch{}
+  }
+}
+
+async function slaOpInDb(obj){
+  const {error} = await sb.from('carburatoren').upsert(jsNaarDb(obj));
+  if(error) throw error;
+  const idx = carbus.findIndex(c=>c.id===obj.id);
+  if(idx>=0) carbus[idx]=obj; else carbus.unshift(obj);
+}
+
+async function verwijderUitDb(id){
+  const {error} = await sb.from('carburatoren').delete().eq('id',id);
+  if(error) throw error;
+  carbus = carbus.filter(c=>c.id!==id);
+}
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
@@ -295,14 +329,13 @@ function nieuwCarbu(){ huidig={id:uuid(),naam:'',merk:'',model:'',motorType:'',b
 function bewerkCarbu(id){ huidig=carbus.find(c=>c.id===id)||null; if(!huidig) return; view='edit'; render(); }
 function gaTerug(){ huidig=null; view='lijst'; render(); }
 
-function slaOp(){
+async function slaOp(){
   const naam = document.getElementById('f-naam').value.trim();
   if(!naam){
     const b=document.getElementById('fout-box'); b.textContent='⚠️ Vul een naam in.'; b.style.display='block'; return;
   }
   const obj = {
-    id: huidig.id,
-    naam,
+    id: huidig.id, naam,
     motorType: document.getElementById('f-mt').value.trim(),
     merk:      document.getElementById('f-merk').value.trim(),
     model:     document.getElementById('f-model').value.trim(),
@@ -312,10 +345,15 @@ function slaOp(){
     testLaag:  document.getElementById('f-tl').value.trim(),
     opmerkingen: document.getElementById('f-op').value.trim(),
   };
-  const idx = carbus.findIndex(c=>c.id===obj.id);
-  if(idx>=0) carbus[idx]=obj; else carbus.unshift(obj);
-  slaCarbus();
-  gaTerug();
+  const btn = document.querySelector('.btn-blauw');
+  if(btn){ btn.disabled=true; btn.textContent='Opslaan…'; }
+  try{
+    await slaOpInDb(obj);
+    gaTerug();
+  }catch(e){
+    const b=document.getElementById('fout-box'); b.textContent='⚠️ Fout bij opslaan: '+e.message; b.style.display='block';
+    if(btn){ btn.disabled=false; btn.textContent='Opslaan'; }
+  }
 }
 
 function verwijderCarbu(id){
@@ -325,10 +363,13 @@ function verwijderCarbu(id){
     icoon:'🗑️',
     bevestig:'Verwijderen',
     bevestigKleur:'#ef4444',
-    onOk:()=>{
-      carbus = carbus.filter(c=>c.id!==id);
-      slaCarbus();
-      gaTerug();
+    onOk: async ()=>{
+      try{
+        await verwijderUitDb(id);
+        gaTerug();
+      }catch(e){
+        alert('Fout bij verwijderen: '+e.message);
+      }
     }
   });
 }
@@ -363,7 +404,7 @@ async function doLogout(){
 // ── INIT ──────────────────────────────────────────────────────────────────────
 async function init(){
   try{
-    const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
     const {data:{session}}=await sb.auth.getSession();
     if(!session){window.location.href='/';return;}
     const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
@@ -374,7 +415,7 @@ async function init(){
   if(rol.has('admin')){const _b=document.getElementById('nav-instellingen-wrap');if(_b)_b.style.display='';}
   if(rol.has('admin')||rol.has('dfk-sales')){const _s=document.getElementById('nav-sales-wrap');if(_s)_s.style.display='';}
   }catch{window.location.href='/';return;}
-  laadCarbus();
+  await laadCarbus();
   render();
 }
 init();

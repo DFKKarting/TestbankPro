@@ -197,7 +197,7 @@ let huidigView = 'overzicht';
 let gekozenMotor = null;
 let gekozenCarbu = null;
 let chartInstantie = null;
-let carbuLijstLS = [];    // carburatoren uit localStorage (carburators-pagina)
+let carbuLijstDB = [];    // carburatoren uit Supabase carburatoren-tabel
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -233,26 +233,30 @@ function fromRow(r){
   };
 }
 
-function laadCarbuLijstLS(){
-  try{ carbuLijstLS = JSON.parse(localStorage.getItem('tbp_carburators')||'[]'); }
-  catch{ carbuLijstLS = []; }
+async function laadCarbuLijstDB(){
+  try{
+    const {data} = await sb.from('carburatoren').select('*').order('naam');
+    carbuLijstDB = (data||[]).map(r=>({
+      id:r.id, naam:r.naam||'', motorType:r.motor_type||'', merk:r.merk||'', model:r.model||'',
+      baanHoog:r.baan_hoog||'', baanLaag:r.baan_laag||'', testHoog:r.test_hoog||'', testLaag:r.test_laag||'', opmerkingen:r.opmerkingen||''
+    }));
+  }catch{ carbuLijstDB=[]; }
 }
-function slaCarbuLijstLS(){ localStorage.setItem('tbp_carburators', JSON.stringify(carbuLijstLS)); }
 
-// Geeft alle bekende carbu-namen terug: unie van localStorage + sessiedata
+// Geeft alle bekende carbu-namen terug: unie van Supabase carburatoren + sessiedata
 function alleCarbuNamen(){
-  const set = new Set(carbuLijstLS.map(c=>c.naam).filter(Boolean));
+  const set = new Set(carbuLijstDB.map(c=>c.naam).filter(Boolean));
   Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>set.add(c)));
   return [...set].sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
 }
 
 async function laadData(){
   document.getElementById('db-status').innerHTML='<span class="db-dot" style="background:#10b981"></span>Supabase';
-  laadCarbuLijstLS();
   const [{data:sd},{data:md}] = await Promise.all([
     sb.from('sessies').select('*').order('created_at',{ascending:false}),
     sb.from('motoren').select('*')
   ]);
+  await laadCarbuLijstDB();
   sessies = (sd||[]).map(fromRow);
   motorenCache = {};
   (md||[]).forEach(r=>{motorenCache[r.motor_nummer]=r;});
@@ -267,9 +271,9 @@ async function hernoemCarbu(oudeNaam){
   if(!nieuweNaam||nieuweNaam.trim()===oudeNaam) return;
   const nieuw = nieuweNaam.trim();
 
-  // 1. Update localStorage
-  carbuLijstLS = carbuLijstLS.map(c=>c.naam===oudeNaam ? {...c, naam:nieuw} : c);
-  slaCarbuLijstLS();
+  // 1. Update naam in Supabase carburatoren tabel
+  const dbCarbu = carbuLijstDB.find(c=>c.naam===oudeNaam);
+  if(dbCarbu) await sb.from('carburatoren').update({naam:nieuw,updated_at:new Date().toISOString()}).eq('id',dbCarbu.id);
 
   // 2. Update alle Supabase sessies die deze carbu bevatten
   if(sb){
@@ -765,6 +769,30 @@ function subTabsHtml(actief){
   return `<div class="sub-tabs">${tabs.map(([v,l])=>`<button class="sub-tab${v===actief?' active':''}" onclick="gaaNaar('${v}')">${l}</button>`).join('')}</div>`;
 }
 
+function renderAlleCarburatoren(){
+  const alleNamen = alleCarbuNamen();
+  if(!alleNamen.length) return '';
+  const getestSet = new Set();
+  Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>getestSet.add(c)));
+  const items = alleNamen.map(naam=>{
+    const getest = getestSet.has(naam);
+    const info = carbuLijstDB.find(c=>c.naam===naam);
+    const sub = info ? [info.merk,info.model,info.motorType].filter(Boolean).join(' · ') : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f3f4f6">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:#111827">${esc(naam)}</div>
+        ${sub?`<div style="font-size:12px;color:#9ca3af;margin-top:2px">${esc(sub)}</div>`:''}
+      </div>
+      <span class="${getest?'chip-gemeten':'chip-geen'}">${getest?'Getest':'Niet getest'}</span>
+      <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="hernoemCarbu('${esc(naam)}')">Hernoem</button>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-title">Alle carburatoren <span style="font-size:13px;font-weight:500;color:#9ca3af">(${alleNamen.length})</span></div>
+    ${items}
+  </div>`;
+}
+
 function renderOverzicht(){
   const motorNrs = Object.keys(combinaties);
   const carbuSet = new Set();
@@ -827,7 +855,8 @@ function renderOverzicht(){
           <tbody>${tblRijen||'<tr><td colspan="8" style="text-align:center;padding:24px;color:#9ca3af">Geen data met curvedata gevonden</td></tr>'}</tbody>
         </table>
       </div>
-    </div>`;
+    </div>
+    ${renderAlleCarburatoren()}`;
 }
 
 function renderMotorAnalyse(){
@@ -987,8 +1016,8 @@ function renderCarburateurAnalyse(){
       </tr>`;
   }).join('');
 
-  // Extra info uit localStorage
-  const lsInfo = carbuLijstLS.find(c=>c.naam===cb);
+  // Extra info uit Supabase carburatoren
+  const lsInfo = carbuLijstDB.find(c=>c.naam===cb);
   const lsDetail = lsInfo
     ? `<div style="font-size:12px;color:#6b7280;margin-top:4px">${[lsInfo.merk,lsInfo.model,lsInfo.motorType].filter(Boolean).join(' · ')}</div>`
     : '';
