@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/logos/dfk-enginges-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="DFK Engines">
+<title>Carbu Analyse – DFK Engines</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;overflow-x:hidden}
+#header{background:#111827;color:#fff;padding:0 16px;display:flex;flex-direction:column;position:sticky;top:0;z-index:100}
+#header-top{display:flex;align-items:center;height:54px;gap:10px}
+#nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;border-top:1px solid #1f2937}
+#nav-tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;color:#9ca3af;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;flex-shrink:0;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab:hover{color:#fff}
+.tab.active{color:#60a5fa;border-bottom-color:#60a5fa}
+.logo{display:flex;align-items:center;gap:12px;cursor:pointer;order:-1}
+.logo-name{font-weight:800;font-size:18px;letter-spacing:-0.5px}
+#main{max-width:1060px;margin:0 auto;padding:24px 16px}
+.btn{border:none;border-radius:8px;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{opacity:.88}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-dark{background:#374151;color:#fff}
+.btn-sm{background:none;border:1.5px solid #e5e7eb;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;color:#374151;font-weight:600;font-family:inherit;white-space:nowrap}
+.btn-sm:hover{border-color:#2563eb;color:#2563eb}
+.inp{border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;color:#111827;background:#fff;outline:none;font-family:inherit}
+.inp:focus{border-color:#2563eb}
+.sel{border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;color:#111827;background:#fff;outline:none;font-family:inherit;cursor:pointer;width:100%}
+.badge{padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;background:#f9fafb}
+.tbl td{padding:8px 12px;font-size:13px;border-top:1px solid #f3f4f6;vertical-align:middle}
+.tbl tr:hover td{background:#f9fafb}
+.tbl tr.hl td{background:#eff6ff}
+.tbl-border{border:1.5px solid #e5e7eb;border-radius:10px;overflow:hidden}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.07);padding:20px;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:800;color:#111827;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.stat-val{font-size:26px;font-weight:800}
+.stat-lbl{font-size:12px;color:#6b7280;margin-top:2px}
+.page-title{margin:0;font-size:19px;font-weight:800}
+.sec-label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.loading{text-align:center;padding:80px;color:#6b7280;font-size:15px}
+.empty-state{background:#fff;border-radius:12px;text-align:center;padding:48px;color:#9ca3af;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.sub-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.sub-tab{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;background:#fff;color:#6b7280;border:1.5px solid #e5e7eb}
+.sub-tab:hover{border-color:#2563eb;color:#2563eb}
+.sub-tab.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.chip-gemeten{background:#d1fae5;color:#065f46;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700}
+.chip-geschat{background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700}
+.chip-geen{background:#f3f4f6;color:#9ca3af;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700}
+.chip-waarschuwing{background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.score-bar-wrap{display:flex;align-items:center;gap:8px}
+.score-bar{height:6px;border-radius:3px;background:#e5e7eb;flex:1;min-width:60px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:3px;background:#2563eb}
+.chart-wrap{position:relative;height:340px;margin-top:8px}
+.breakdown-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid #f3f4f6}
+.breakdown-lbl{font-size:12px;color:#6b7280;min-width:130px}
+.breakdown-val{font-size:13px;font-weight:700;min-width:90px;color:#111827;text-align:right}
+.breakdown-pct{font-size:11px;color:#9ca3af;min-width:40px;text-align:right}
+.analyse-tekst{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:14px 16px;font-size:13px;color:#14532d;line-height:1.6;margin-top:12px}
+.waarschuwing-tekst{background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:12px;color:#78350f;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
+.opt-rij{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:10px;flex-wrap:wrap}
+.opt-rang{font-size:22px;font-weight:800;color:#d1d5db;min-width:32px}
+.opt-motor{font-size:15px;font-weight:800;color:#111827}
+.opt-arrow{font-size:18px;color:#9ca3af}
+.opt-carbu{font-size:15px;font-weight:700;color:#2563eb}
+.opt-score{font-size:22px;font-weight:800;color:#059669;margin-left:auto}
+.opt-uitleg{font-size:12px;color:#6b7280;flex-basis:100%;margin-top:6px;line-height:1.5}
+.nav-wrap{position:relative;flex-shrink:0;order:1}
+.nav-toggle{background:#374151;border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;gap:7px;font-weight:700;font-family:inherit}
+.nav-toggle:hover{background:#4b5563}
+.nav-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#1f2937;border-radius:12px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;display:none;overflow:hidden;border:1px solid #374151}
+.nav-dropdown.open{display:block}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 16px;color:#d1d5db;cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:background .12s}
+.nav-item:hover{background:#374151;color:#fff}
+.nav-divider{height:1px;background:#374151;margin:4px 0}
+.db-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+#login-screen{display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f 0%,#111827 100%);z-index:9999;align-items:center;justify-content:center}
+#login-screen.active{display:flex}
+.login-card{background:#fff;border-radius:16px;padding:36px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{margin-bottom:24px}
+.login-title{font-size:20px;font-weight:800;color:#111827;margin-bottom:4px}
+.login-sub{font-size:14px;color:#6b7280;margin-bottom:24px}
+.login-field{margin-bottom:16px}
+.login-label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+.login-input{border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:14px;color:#111827;background:#fff;outline:none;font-family:inherit;width:100%}
+.login-input:focus{border-color:#2563eb}
+.login-btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.login-btn:hover{background:#1d4ed8}
+.login-error{margin-top:12px;color:#dc2626;font-size:13px;min-height:20px}
+.consistentie-badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.cb-hoog{background:#d1fae5;color:#065f46}
+.cb-midden{background:#fef3c7;color:#92400e}
+.cb-laag{background:#fee2e2;color:#991b1b}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/logos/dfk-engines-transp.png" style="height:100px;object-fit:contain;display:block;margin:0 auto">
+    </div>
+    <div class="login-title">Inloggen</div>
+    <div class="login-sub">DFK Engines Testbank</div>
+    <div class="login-field"><label class="login-label">E-mailadres</label><input class="login-input" id="login-email" type="email" autocomplete="username"></div>
+    <div class="login-field"><label class="login-label">Wachtwoord</label><input class="login-input" id="login-pass" type="password" autocomplete="current-password"></div>
+    <button class="login-btn" onclick="doLogin()">Inloggen</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<header id="header">
+  <div id="header-top">
+    <div class="logo" onclick="window.location.href='/'">
+      <img src="/logos/dfk-engines-transp.png" style="height:44px;object-fit:contain;display:block">
+      <span class="logo-name">DFK Engines</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <span id="db-status" style="font-size:12px;color:#6b7280;display:flex;align-items:center;white-space:nowrap"></span>
+      <div class="nav-wrap">
+        <button class="nav-toggle" onclick="toggleNav()">
+          <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="font-size:11px;opacity:.7">&#9660;</span>
+        </button>
+        <div class="nav-dropdown" id="nav-dropdown">
+          <div id="nav-materiaal" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
+            <div class="nav-divider"></div>
+          </div>
+          <div id="nav-sales-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-sales/'">DFK Sales</button>
+            <div class="nav-divider"></div>
+          </div>
+          <button class="nav-item" onclick="doLogout()">Afmelden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav id="nav-tabs">
+    <button class="tab" onclick="window.location.href='/'">Sessies</button>
+    <button class="tab" onclick="window.location.href='/motoren/'">Motoren</button>
+    <button class="tab" onclick="window.location.href='/klanten/'">Klanten</button>
+    <button class="tab" onclick="window.location.href='/analyse/'">Analyse</button>
+    <button class="tab" onclick="window.location.href='/carburators/'">Carburatoren</button>
+    <button class="tab" onclick="window.location.href='/revisie/'">Revisies</button>
+    <button class="tab active" onclick="window.location.href='/carbu-analyse/'">Carbu Optimalisatie</button>
+  </nav>
+</header>
+
+<div id="main"><div class="loading">⏳ Laden...</div></div>
+
+<script>
+const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
+
+// ── CONFIGURATIE ──────────────────────────────────────────────────────────────
+// Configureerbare gewichten – pas hier de percentages aan
+const ANALYSE_GEWICHTEN = {
+  peakVermogen:    0.30,  // 30% piekzermogen (HP)
+  middengebied:    0.20,  // 20% gem. HP in 9.000–11.500 rpm
+  bovengebied:     0.15,  // 15% gem. HP in 11.500–14.000 rpm
+  koppel:          0.15,  // 15% gem. Nm in 9.000–11.500 rpm
+  powerbandBreedte:0.10,  // 10% breedte van de vermogenscurve
+  curveKwaliteit:  0.10   // 10% consistentie/vloeiendheid van de curve
+};
+
+const RPM_PUNTEN = [8000,8500,9000,9500,10000,10500,11000,11500,12000,12500,13000,13500,14000];
+const RPM_MIDDEN_MIN = 9000, RPM_MIDDEN_MAX = 11500;
+const RPM_TOP_MIN = 11500, RPM_TOP_MAX = 14000;
+const RPM_BEREIK_MIN = 8000, RPM_BEREIK_MAX = 14000;
+const POWERBAND_DREMPEL = 0.95; // 95% van piekvermogen
+
+const KLEUREN = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#ea580c'];
+
+// ── STAAT ────────────────────────────────────────────────────────────────────
+let sb = null;
+let sessies = [];
+let motorenCache = {};
+let combinaties = {};     // { motorNr: { carbu: [ {sessie, run} ] } }
+let alleScores = null;    // genormaliseerde scores na berekening
+let huidigView = 'overzicht';
+let gekozenMotor = null;
+let gekozenCarbu = null;
+let chartInstantie = null;
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const f1 = v => (v??0).toFixed(1);
+const f2 = v => (v??0).toFixed(2);
+const fRpm = v => v ? Math.round(v).toLocaleString('nl-NL') : '—';
+const motorLabel = mn => {
+  const c = motorenCache[mn];
+  const naam = c?.motor_naam || c?.motorNaam;
+  return naam || mn || '?';
+};
+
+function toggleNav(){document.getElementById('nav-dropdown').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!e.target.closest('.nav-wrap'))document.getElementById('nav-dropdown').classList.remove('open');});
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  const {error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(error){document.getElementById('login-error').textContent=error.message;return;}
+  init();
+}
+async function doLogout(){await sb.auth.signOut();window.location.reload();}
+
+// ── SUPABASE: DATA LADEN ──────────────────────────────────────────────────────
+function fromRow(r){
+  return {
+    id:r.id, motorNummer:r.motor_nummer||'', klant:r.klant||'',
+    carbu:r.carbu||'', testType:r.test_type||'Test', uitkomst:r.uitkomst||'',
+    opmerkingen:r.opmerkingen||'', runs:r.runs||[],
+    motorMerk:r.motor_merk||'', motorType:r.motor_type||'', motorNaam:r.motor_naam||'',
+    created_at:r.created_at||''
+  };
+}
+
+async function laadData(){
+  document.getElementById('db-status').innerHTML='<span class="db-dot" style="background:#10b981"></span>Supabase';
+  const [{data:sd},{data:md}] = await Promise.all([
+    sb.from('sessies').select('*').order('created_at',{ascending:false}),
+    sb.from('motoren').select('*')
+  ]);
+  sessies = (sd||[]).map(fromRow);
+  motorenCache = {};
+  (md||[]).forEach(r=>{motorenCache[r.motor_nummer]=r;});
+  verwerkCombinaties();
+  berekenAlleScores();
+  render();
+}
+
+// ── DATA VERWERKING ───────────────────────────────────────────────────────────
+function effectiefCarbu(sessie, run){
+  return (run.carbu||'').trim() || (sessie.carbu||'').trim() || '';
+}
+
+function verwerkCombinaties(){
+  combinaties = {};
+  sessies.forEach(sessie=>{
+    const mn = sessie.motorNummer;
+    if(!mn) return;
+    (sessie.runs||[]).forEach(run=>{
+      if(!run.curveData||!run.curveData.length) return;
+      const carbu = effectiefCarbu(sessie, run);
+      if(!carbu) return;
+      if(!combinaties[mn]) combinaties[mn]={};
+      if(!combinaties[mn][carbu]) combinaties[mn][carbu]=[];
+      combinaties[mn][carbu].push({sessie, run});
+    });
+  });
+}
+
+// ── ANALYSE FUNCTIES ──────────────────────────────────────────────────────────
+function interpoleer(curve, rpm){
+  if(!curve||!curve.length) return null;
+  if(rpm<=curve[0].rpm) return null; // niet buiten gemeten bereik
+  if(rpm>=curve[curve.length-1].rpm) return null;
+  for(let i=0;i<curve.length-1;i++){
+    if(rpm>=curve[i].rpm&&rpm<=curve[i+1].rpm){
+      const t=(rpm-curve[i].rpm)/(curve[i+1].rpm-curve[i].rpm);
+      return {
+        hp: curve[i].hp+t*(curve[i+1].hp-curve[i].hp),
+        nm: curve[i].nm+t*(curve[i+1].nm-curve[i].nm)
+      };
+    }
+  }
+  return null;
+}
+
+function interpoleerHp(curve, rpm){
+  const r = interpoleer(curve, rpm);
+  return r ? r.hp : null;
+}
+
+function analyseRun(run){
+  const curve = run.curveData||[];
+  if(!curve.length) return null;
+  const sorted = [...curve].sort((a,b)=>a.rpm-b.rpm);
+  const minRpm = sorted[0].rpm;
+  const maxRpm = sorted[sorted.length-1].rpm;
+
+  // Piek HP en Nm
+  let peakHp=0, peakHpRpm=0, peakNm=0, peakNmRpm=0;
+  sorted.forEach(p=>{
+    if(p.hp>peakHp){peakHp=p.hp;peakHpRpm=p.rpm;}
+    if(p.nm>peakNm){peakNm=p.nm;peakNmRpm=p.rpm;}
+  });
+
+  // HP bij vaste RPM-punten
+  const hpBijRpm={};
+  RPM_PUNTEN.forEach(rpm=>{
+    if(rpm>=minRpm&&rpm<=maxRpm){
+      const v=interpoleerHp(sorted,rpm);
+      if(v!==null) hpBijRpm[rpm]=v;
+    }
+  });
+
+  // Gemiddelde HP in middengebied (9000-11500)
+  const midPunten=sorted.filter(p=>p.rpm>=RPM_MIDDEN_MIN&&p.rpm<=RPM_MIDDEN_MAX);
+  const gemHpMidden=midPunten.length ? midPunten.reduce((s,p)=>s+p.hp,0)/midPunten.length : null;
+  const gemNmMidden=midPunten.length ? midPunten.reduce((s,p)=>s+p.nm,0)/midPunten.length : null;
+
+  // Gemiddelde HP in bovengebied (11500-14000)
+  const topPunten=sorted.filter(p=>p.rpm>=RPM_TOP_MIN&&p.rpm<=RPM_TOP_MAX);
+  const gemHpTop=topPunten.length ? topPunten.reduce((s,p)=>s+p.hp,0)/topPunten.length : null;
+
+  // Oppervlakte onder de curve (8000-14000 rpm, trapeziumregel)
+  let area=0;
+  for(let i=1;i<sorted.length;i++){
+    const r1=sorted[i-1].rpm, r2=sorted[i].rpm;
+    if(r2>=RPM_BEREIK_MIN&&r1<=RPM_BEREIK_MAX){
+      area+=(r2-r1)*(sorted[i-1].hp+sorted[i].hp)/2;
+    }
+  }
+
+  // Powerbandbreedgte: RPM-bereik waar HP >= 95% van piek
+  const drempelHp=peakHp*POWERBAND_DREMPEL;
+  const bandPunten=sorted.filter(p=>p.hp>=drempelHp);
+  const powerbandBreedte=bandPunten.length>=2
+    ? bandPunten[bandPunten.length-1].rpm-bandPunten[0].rpm : 0;
+
+  // Curve kwaliteit: vloeiendheid (stabiele stijging dan daling, weinig spikes)
+  // Bereken HP-verandering per 100 rpm tussen opeenvolgende punten
+  const deltas=[];
+  for(let i=1;i<sorted.length;i++){
+    const dr=sorted[i].rpm-sorted[i-1].rpm;
+    if(dr>0&&dr<600) deltas.push((sorted[i].hp-sorted[i-1].hp)/dr*100);
+  }
+  let curveKwaliteit=1.0;
+  if(deltas.length>2){
+    const gem=deltas.reduce((s,d)=>s+d,0)/deltas.length;
+    const stddev=Math.sqrt(deltas.reduce((s,d)=>s+Math.pow(d-gem,2),0)/deltas.length);
+    // Lage stddev = vloeiende curve. Normaliseer: stddev < 2 = goed
+    curveKwaliteit=Math.max(0, Math.min(1, 1 - stddev/15));
+  }
+
+  return {
+    peakHp, peakHpRpm, peakNm, peakNmRpm,
+    gemHpMidden, gemHpTop, gemNmMidden,
+    area, powerbandBreedte, curveKwaliteit,
+    hpBijRpm, minRpm, maxRpm
+  };
+}
+
+// Kies de beste run voor een combinatie (isBest vlag, anders hoogste HP)
+function besteRunVan(runItems){
+  if(!runItems||!runItems.length) return null;
+  const geldig = runItems.filter(ri=>ri.run.curveData&&ri.run.curveData.length);
+  if(!geldig.length) return null;
+  const metVlag = geldig.find(ri=>ri.run.isBest);
+  if(metVlag) return metVlag;
+  return geldig.reduce((best,ri)=>
+    (ri.run.vermogen||0)>(best.run.vermogen||0)?ri:best, geldig[0]);
+}
+
+// Analyseer een motor × carbu combinatie (met meerdere runs)
+function analyseCombi(runItems){
+  if(!runItems||!runItems.length) return null;
+  const geldig = runItems.filter(ri=>ri.run.curveData&&ri.run.curveData.length);
+  if(!geldig.length) return null;
+
+  const beste = besteRunVan(runItems);
+  const besteAnalyse = analyseRun(beste.run);
+  if(!besteAnalyse) return null;
+
+  // Gemiddelde over alle geldige runs
+  const analyses = geldig.map(ri=>analyseRun(ri.run)).filter(Boolean);
+  const gemAnalyse = {
+    peakHp: analyses.reduce((s,a)=>s+a.peakHp,0)/analyses.length,
+    peakNm: analyses.reduce((s,a)=>s+a.peakNm,0)/analyses.length,
+    gemHpMidden: analyses.reduce((s,a)=>s+(a.gemHpMidden||0),0)/analyses.length,
+    gemHpTop: analyses.reduce((s,a)=>s+(a.gemHpTop||0),0)/analyses.length,
+    gemNmMidden: analyses.reduce((s,a)=>s+(a.gemNmMidden||0),0)/analyses.length,
+    powerbandBreedte: analyses.reduce((s,a)=>s+a.powerbandBreedte,0)/analyses.length,
+    curveKwaliteit: analyses.reduce((s,a)=>s+a.curveKwaliteit,0)/analyses.length,
+  };
+
+  // Consistentie tussen runs (stddev peakHp t.o.v. gemiddelde)
+  const hpWaarden = analyses.map(a=>a.peakHp);
+  const hpGem = hpWaarden.reduce((s,v)=>s+v,0)/hpWaarden.length;
+  const hpStddev = Math.sqrt(hpWaarden.reduce((s,v)=>s+Math.pow(v-hpGem,2),0)/hpWaarden.length);
+  const consistentie = Math.max(0, Math.min(100, 100 - (hpStddev/hpGem)*200));
+
+  // Controleer testomstandigheden
+  const temps = geldig.map(ri=>ri.run.temperatuur).filter(v=>v!==''&&v!==null&&v!==undefined);
+  const drukken = geldig.map(ri=>ri.run.luchtdruk).filter(v=>v!==''&&v!==null&&v!==undefined);
+  let condWarning = null;
+  if(geldig.length>1&&temps.length>1){
+    const tempRange = Math.max(...temps)-Math.min(...temps);
+    const drukRange = drukken.length>1 ? Math.max(...drukken)-Math.min(...drukken) : 0;
+    if(tempRange>5||drukRange>20)
+      condWarning=`Temperatuurverschil ${tempRange.toFixed(0)}°C${drukRange>20?`, luchtdrukverschil ${drukRange.toFixed(0)} mbar`:''}. Vergelijking minder betrouwbaar.`;
+  }
+
+  return {
+    beste: {run:beste.run, sessie:beste.sessie, analyse:besteAnalyse},
+    aantalRuns: geldig.length,
+    gemAnalyse, consistentie, condWarning
+  };
+}
+
+// ── SCORING ───────────────────────────────────────────────────────────────────
+function berekenAlleScores(){
+  // Verzamel alle combinatie-analyses
+  const items = [];
+  Object.entries(combinaties).forEach(([mn,carbuMap])=>{
+    Object.entries(carbuMap).forEach(([carbu,runItems])=>{
+      const combi = analyseCombi(runItems);
+      if(combi) items.push({mn, carbu, combi, analyse:combi.gemAnalyse});
+    });
+  });
+  if(!items.length){alleScores=null;return;}
+
+  // Bepaal maxima voor normalisatie
+  const max = {
+    peakHp: Math.max(...items.map(x=>x.analyse.peakHp||0))||1,
+    gemHpMidden: Math.max(...items.map(x=>x.analyse.gemHpMidden||0))||1,
+    gemHpTop: Math.max(...items.map(x=>x.analyse.gemHpTop||0))||1,
+    gemNmMidden: Math.max(...items.map(x=>x.analyse.gemNmMidden||0))||1,
+    powerbandBreedte: Math.max(...items.map(x=>x.analyse.powerbandBreedte||0))||1,
+    curveKwaliteit: 1.0
+  };
+
+  // Bereken score per item
+  alleScores = {};
+  items.forEach(({mn,carbu,combi,analyse})=>{
+    const w = ANALYSE_GEWICHTEN;
+    const n = (v,m)=>Math.min(100,(v||0)/m*100);
+
+    const components = {
+      peakVermogen:     n(analyse.peakHp, max.peakHp),
+      middengebied:     n(analyse.gemHpMidden||0, max.gemHpMidden),
+      bovengebied:      n(analyse.gemHpTop||0, max.gemHpTop),
+      koppel:           n(analyse.gemNmMidden||0, max.gemNmMidden),
+      powerbandBreedte: n(analyse.powerbandBreedte||0, max.powerbandBreedte),
+      curveKwaliteit:   n(analyse.curveKwaliteit||0, max.curveKwaliteit)
+    };
+
+    const totaal =
+      components.peakVermogen     * w.peakVermogen +
+      components.middengebied     * w.middengebied +
+      components.bovengebied      * w.bovengebied +
+      components.koppel           * w.koppel +
+      components.powerbandBreedte * w.powerbandBreedte +
+      components.curveKwaliteit   * w.curveKwaliteit;
+
+    if(!alleScores[mn]) alleScores[mn]={};
+    alleScores[mn][carbu]={components, totaal, combi};
+  });
+}
+
+function getScore(mn, carbu){
+  return alleScores?.[mn]?.[carbu] || null;
+}
+
+// ── TEKST GENERATIE ───────────────────────────────────────────────────────────
+function genereerTekst(analyse, score){
+  if(!analyse||!score) return '';
+  const {peakHp, peakHpRpm, peakNm, peakNmRpm, gemHpMidden, gemHpTop, powerbandBreedte, curveKwaliteit} = analyse;
+  const {components} = score;
+  const zinnen = [];
+
+  // Piekvermogen
+  const piekWoord = peakHp>=29.5?'uitstekende':peakHp>=28.5?'sterke':peakHp>=27.5?'goede':'redelijke';
+  zinnen.push(`Deze carburateur levert een ${piekWoord} piek van ${f1(peakHp)} HP bij ${fRpm(peakHpRpm)} rpm.`);
+
+  // Koppel
+  if(peakNm){
+    const nmWoord = peakNm>=19.5?'uitstekend':peakNm>=18.5?'sterk':peakNm>=17.5?'goed':'redelijk';
+    zinnen.push(`Het koppel is ${nmWoord}: ${f2(peakNm)} Nm bij ${fRpm(peakNmRpm)} rpm.`);
+  }
+
+  // Middengebied
+  if(gemHpMidden){
+    const verhouding = gemHpMidden / peakHp;
+    if(verhouding>=0.96)
+      zinnen.push('Het vermogen in het middengebied (9.000–11.500 rpm) is bijzonder sterk en blijft vrijwel op het niveau van de piek.');
+    else if(verhouding>=0.90)
+      zinnen.push(`Het middengebied (9.000–11.500 rpm) is goed met gemiddeld ${f1(gemHpMidden)} HP — dit zorgt voor een brede, bruikbare curve.`);
+    else
+      zinnen.push(`Het middengebied (9.000–11.500 rpm) gemiddeld ${f1(gemHpMidden)} HP valt wat terug ten opzichte van de piek.`);
+  }
+
+  // Bovengebied
+  if(gemHpTop){
+    const topVerh = gemHpTop / peakHp;
+    if(topVerh>=0.90)
+      zinnen.push('Het vermogen in het bovengebied (boven 11.500 rpm) blijft sterk na de piek.');
+    else if(topVerh>=0.80)
+      zinnen.push('Na de piek daalt het vermogen gematigd in het bovengebied.');
+    else
+      zinnen.push('Het vermogen daalt duidelijk na de piek in het bovengebied.');
+  }
+
+  // Powerbandbreedgte
+  if(powerbandBreedte>=2500)
+    zinnen.push(`De vermogenscurve is breed: het toerentalgebied met minimaal 95% van het piekvermogen bedraagt ${fRpm(powerbandBreedte)} rpm.`);
+  else if(powerbandBreedte>=1500)
+    zinnen.push(`De breedte van de vermogenscurve (≥95% van piek) is ${fRpm(powerbandBreedte)} rpm — bruikbaar over een ruim toerentalgebied.`);
+  else if(powerbandBreedte>0)
+    zinnen.push(`De piek is relatief smal (${fRpm(powerbandBreedte)} rpm op ≥95% niveau).`);
+
+  // Curve kwaliteit
+  if(curveKwaliteit>=0.85)
+    zinnen.push('De curve is vloeiend en consistent zonder opvallende onregelmatigheden.');
+  else if(curveKwaliteit<0.60)
+    zinnen.push('De curve vertoont enige onregelmatigheden — meerdere meetpunten kunnen de betrouwbaarheid verbeteren.');
+
+  // Totaaloordeel
+  const tot = score.totaal;
+  if(tot>=92)
+    zinnen.push('Totaaloordeel: uitstekende allround prestaties over het volledige toerentalgebied.');
+  else if(tot>=85)
+    zinnen.push('Totaaloordeel: sterke combinatie met goede balans tussen piek, middengebied en koppel.');
+  else if(tot>=75)
+    zinnen.push('Totaaloordeel: degelijke combinatie, maar er is ruimte voor verbetering.');
+  else
+    zinnen.push('Totaaloordeel: beperkte prestaties — overweeg alternatieve carburatoren voor deze motor.');
+
+  return zinnen.join(' ');
+}
+
+// ── OPTIMALISATIE (greedy Hungarian) ─────────────────────────────────────────
+function berekenOptimaleVerdeling(){
+  const motorNrs = Object.keys(combinaties);
+  const carbuSet = new Set();
+  motorNrs.forEach(mn=>Object.keys(combinaties[mn]).forEach(c=>carbuSet.add(c)));
+  const carbus = [...carbuSet];
+
+  // Bouw score matrix
+  const matrix = motorNrs.map(mn=>
+    carbus.map(cb=>getScore(mn,cb)?.totaal||0)
+  );
+
+  // Greedy: sorteer alle (motor, carbu, score) op score desc, pak steeds de beste niet-gebruikte
+  const opties = [];
+  motorNrs.forEach((mn,i)=>{
+    carbus.forEach((cb,j)=>{
+      const score = matrix[i][j];
+      if(score>0) opties.push({mn,cb,score,i,j});
+    });
+  });
+  opties.sort((a,b)=>b.score-a.score);
+
+  const toegewezen = new Map();
+  const gebruiktCarbu = new Set();
+  opties.forEach(opt=>{
+    if(!toegewezen.has(opt.mn)&&!gebruiktCarbu.has(opt.cb)){
+      toegewezen.set(opt.mn,opt.cb);
+      gebruiktCarbu.add(opt.cb);
+    }
+  });
+
+  // Motoren zonder toewijzing (niet voldoende data)
+  motorNrs.forEach(mn=>{
+    if(!toegewezen.has(mn)) toegewezen.set(mn,null);
+  });
+
+  return motorNrs.map(mn=>({
+    motorNr: mn,
+    carbu: toegewezen.get(mn)||null,
+    score: toegewezen.get(mn) ? (getScore(mn,toegewezen.get(mn))?.totaal||0) : 0
+  })).sort((a,b)=>b.score-a.score);
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+function tekenChart(canvasId, series, modus='hp'){
+  if(chartInstantie){chartInstantie.destroy();chartInstantie=null;}
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+
+  const datasets = series.map((s,i)=>({
+    label: s.label,
+    data: (s.curve||[]).map(p=>({x:p.rpm,y:modus==='hp'?p.hp:p.nm})),
+    borderColor: s.kleur||KLEUREN[i%KLEUREN.length],
+    backgroundColor: 'transparent',
+    borderWidth: 2.5,
+    pointRadius: 0,
+    tension: 0.3
+  }));
+
+  chartInstantie = new Chart(canvas, {
+    type:'line',
+    data:{datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{type:'linear',title:{display:true,text:'RPM',font:{size:11}},ticks:{font:{size:10}}},
+        y:{title:{display:true,text:modus==='hp'?'HP':'Nm',font:{size:11}},ticks:{font:{size:10}}}
+      },
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{
+        label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)} ${modus==='hp'?'HP':'Nm'}`
+      }}}
+    }
+  });
+}
+
+// ── SCORE BREAKDOWN HTML ──────────────────────────────────────────────────────
+function renderBreakdown(score, maxWaarde=100){
+  if(!score) return '<div style="color:#9ca3af;font-size:12px">Geen data</div>';
+  const {components, totaal} = score;
+  const labels = {
+    peakVermogen:'Piekvermogen', middengebied:'Middengebied (9-11.5k)',
+    bovengebied:'Bovengebied (>11.5k)', koppel:'Koppel',
+    powerbandBreedte:'Powerbandbreedgte', curveKwaliteit:'Curve kwaliteit'
+  };
+  const gewichten = {
+    peakVermogen:30,middengebied:20,bovengebied:15,koppel:15,powerbandBreedte:10,curveKwaliteit:10
+  };
+  const rijen = Object.keys(components).map(k=>{
+    const v = components[k];
+    const max = gewichten[k]||10;
+    const bijdrage = v * (ANALYSE_GEWICHTEN[k]||0);
+    return `
+      <div class="breakdown-row">
+        <div class="breakdown-lbl">${labels[k]||k}</div>
+        <div class="score-bar-wrap" style="flex:1">
+          <div class="score-bar"><div class="score-bar-fill" style="width:${Math.round(v)}%"></div></div>
+        </div>
+        <div class="breakdown-val">${v.toFixed(1)} / 100</div>
+        <div class="breakdown-pct" style="color:#6b7280;font-size:11px">×${ANALYSE_GEWICHTEN[k]||0}</div>
+        <div class="breakdown-val" style="min-width:54px">${bijdrage.toFixed(1)}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div style="font-size:11px;color:#9ca3af;display:flex;gap:10px;padding:0 0 6px;border-bottom:1px solid #e5e7eb;margin-bottom:2px">
+      <div style="min-width:130px">Component</div>
+      <div style="flex:1">Score</div>
+      <div style="min-width:90px;text-align:right">Score/100</div>
+      <div style="min-width:40px;text-align:right">Gewicht</div>
+      <div style="min-width:54px;text-align:right">Bijdrage</div>
+    </div>
+    ${rijen}
+    <div class="breakdown-row" style="border-top:2px solid #e5e7eb;margin-top:4px">
+      <div class="breakdown-lbl" style="font-weight:700;color:#111827">Totaalscore</div>
+      <div style="flex:1"></div>
+      <div class="breakdown-val" style="font-size:16px;font-weight:800;color:#059669">${totaal.toFixed(1)}</div>
+      <div class="breakdown-pct"></div>
+      <div class="breakdown-val"></div>
+    </div>`;
+}
+
+// ── VIEWS ──────────────────────────────────────────────────────────────────────
+function subTabsHtml(actief){
+  const tabs = [
+    ['overzicht','Overzicht'],
+    ['motor','Motoranalyse'],
+    ['carburateur','Carburateuranalyse'],
+    ['optimalisatie','Optimalisatie'],
+    ['ranking','Ranking']
+  ];
+  return `<div class="sub-tabs">${tabs.map(([v,l])=>`<button class="sub-tab${v===actief?' active':''}" onclick="gaaNaar('${v}')">${l}</button>`).join('')}</div>`;
+}
+
+function renderOverzicht(){
+  const motorNrs = Object.keys(combinaties);
+  const carbuSet = new Set();
+  motorNrs.forEach(mn=>Object.keys(combinaties[mn]).forEach(c=>carbuSet.add(c)));
+  const aantalRuns = motorNrs.reduce((s,mn)=>
+    s+Object.values(combinaties[mn]).reduce((s2,ri)=>s2+ri.length,0),0);
+
+  // Beste combinatie
+  let besteMn='', besteCarbu='', besteScore=0;
+  motorNrs.forEach(mn=>{
+    Object.keys(combinaties[mn]).forEach(cb=>{
+      const s = getScore(mn,cb);
+      if(s&&s.totaal>besteScore){besteScore=s.totaal;besteMn=mn;besteCarbu=cb;}
+    });
+  });
+
+  // Tabel alle combinaties
+  const rijen = motorNrs.flatMap(mn=>
+    Object.keys(combinaties[mn]).map(cb=>{
+      const score = getScore(mn,cb);
+      const combi = analyseCombi(combinaties[mn][cb]);
+      const beste = combi?.beste?.analyse;
+      return {mn,cb,score,combi,beste};
+    })
+  ).sort((a,b)=>(b.score?.totaal||0)-(a.score?.totaal||0));
+
+  const tblRijen = rijen.map(({mn,cb,score,combi,beste},idx)=>`
+    <tr class="${idx===0?'hl':''}">
+      <td><strong>${esc(motorLabel(mn))}</strong><br><span style="font-size:11px;color:#9ca3af">${esc(mn)}</span></td>
+      <td>${esc(cb)}</td>
+      <td>${beste?f1(beste.peakHp):'—'}</td>
+      <td>${beste?fRpm(beste.peakHpRpm):'—'}</td>
+      <td>${beste?f2(beste.peakNm):'—'}</td>
+      <td>${combi?combi.aantalRuns:'0'}</td>
+      <td>
+        ${score?`<div class="score-bar-wrap"><div class="score-bar" style="min-width:70px"><div class="score-bar-fill" style="width:${Math.round(score.totaal)}%"></div></div><strong>${score.totaal.toFixed(1)}</strong></div>`:'—'}
+      </td>
+      <td><span class="chip-gemeten">🟢 Gemeten</span></td>
+    </tr>`).join('');
+
+  document.getElementById('main').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <h1 class="page-title">Carbu Optimalisatie</h1>
+    </div>
+    ${subTabsHtml('overzicht')}
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val">${motorNrs.length}</div><div class="stat-lbl">Motoren</div></div>
+      <div class="stat-card"><div class="stat-val">${carbuSet.size}</div><div class="stat-lbl">Carburatoren</div></div>
+      <div class="stat-card"><div class="stat-val">${rijen.length}</div><div class="stat-lbl">Geteste combinaties</div></div>
+      <div class="stat-card"><div class="stat-val">${aantalRuns}</div><div class="stat-lbl">Runs met curvedata</div></div>
+      ${besteScore>0?`<div class="stat-card"><div class="stat-val" style="font-size:18px">${esc(motorLabel(besteMn))}</div><div class="stat-lbl">Beste: ${esc(besteCarbu)} (${besteScore.toFixed(1)})</div></div>`:''}
+    </div>
+    <div class="card">
+      <div class="card-title">Alle geteste combinaties</div>
+      <div class="tbl-scroll">
+        <table class="tbl tbl-border">
+          <thead><tr>
+            <th>Motor</th><th>Carburateur</th><th>Max HP</th><th>RPM HP</th><th>Max Nm</th><th>Runs</th><th>Score</th><th>Status</th>
+          </tr></thead>
+          <tbody>${tblRijen||'<tr><td colspan="8" style="text-align:center;padding:24px;color:#9ca3af">Geen data met curvedata gevonden</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderMotorAnalyse(){
+  const motorNrs = Object.keys(combinaties).sort((a,b)=>motorLabel(a).localeCompare(motorLabel(b),'nl'));
+  if(!motorNrs.length){
+    document.getElementById('main').innerHTML=`
+      <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+      ${subTabsHtml('motor')}
+      <div class="empty-state">Geen motoren met curvedata gevonden.</div>`;
+    return;
+  }
+  const mn = gekozenMotor || motorNrs[0];
+  const carbuMap = combinaties[mn]||{};
+  const carbuLijst = Object.keys(carbuMap).sort((a,b)=>{
+    const sa=getScore(mn,a)?.totaal||0, sb=getScore(mn,b)?.totaal||0;
+    return sb-sa;
+  });
+
+  // Series voor chart (top 5 carbus)
+  const chartSeries = carbuLijst.slice(0,5).map((cb,i)=>{
+    const ri = besteRunVan(carbuMap[cb]);
+    return {label:cb, curve:ri?.run.curveData||[], kleur:KLEUREN[i%KLEUREN.length]};
+  });
+
+  // Vergelijkingstabel
+  const tblRijen = carbuLijst.map((cb,idx)=>{
+    const score = getScore(mn,cb);
+    const combi = analyseCombi(carbuMap[cb]);
+    const beste = combi?.beste?.analyse;
+    const isTop = idx===0;
+    return `
+      <tr class="${isTop?'hl':''}">
+        <td>${isTop?'🏆 ':''}<strong>${esc(cb)}</strong></td>
+        <td>${beste?f1(beste.peakHp):'—'}</td>
+        <td>${beste?fRpm(beste.peakHpRpm):'—'}</td>
+        <td>${beste?f2(beste.peakNm):'—'}</td>
+        <td>${beste?fRpm(beste.peakNmRpm):'—'}</td>
+        <td>${combi?combi.aantalRuns:0}</td>
+        <td>${combi?`<span class="consistentie-badge ${combi.consistentie>=85?'cb-hoog':combi.consistentie>=65?'cb-midden':'cb-laag'}">${combi.consistentie.toFixed(0)}%</span>`:'-'}</td>
+        <td>${score?`<strong style="font-size:15px;color:${isTop?'#059669':'#111827'}">${score.totaal.toFixed(1)}</strong>`:'-'}</td>
+        <td><button class="btn-sm" onclick="toonBreakdown('${esc(mn)}','${esc(cb)}')">Details</button></td>
+      </tr>`;
+  }).join('');
+
+  const opts = motorNrs.map(m=>`<option value="${esc(m)}"${m===mn?' selected':''}>${esc(motorLabel(m))} (${esc(m)})</option>`).join('');
+
+  document.getElementById('main').innerHTML=`
+    <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+    ${subTabsHtml('motor')}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <label style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">Motor:</label>
+      <select class="sel" style="max-width:300px" onchange="gekozenMotor=this.value;render()">${opts}</select>
+    </div>
+    <div class="card">
+      <div class="card-title">Carburateurscores voor ${esc(motorLabel(mn))}</div>
+      <div class="tbl-scroll">
+        <table class="tbl tbl-border">
+          <thead><tr><th>Carburateur</th><th>Max HP</th><th>RPM HP</th><th>Max Nm</th><th>RPM Nm</th><th>Runs</th><th>Consistentie</th><th>Score</th><th></th></tr></thead>
+          <tbody>${tblRijen||'<tr><td colspan="9" style="text-align:center;padding:24px;color:#9ca3af">Geen carburatoren getest op deze motor</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    ${carbuLijst.length?`
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        HP-curve vergelijking (top ${Math.min(5,carbuLijst.length)} carburatoren)
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="wisselModus('hp')">HP</button>
+          <button class="btn-sm" onclick="wisselModus('nm')">Nm</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="motor-chart"></canvas></div>
+    </div>` : ''}
+    <div id="breakdown-detail"></div>`;
+
+  if(carbuLijst.length){
+    setTimeout(()=>tekenChart('motor-chart', chartSeries, 'hp'), 50);
+  }
+}
+
+let huidigChartModus = 'hp';
+function wisselModus(m){
+  huidigChartModus = m;
+  const mn = gekozenMotor || Object.keys(combinaties)[0];
+  const carbuMap = combinaties[mn]||{};
+  const carbuLijst = Object.keys(carbuMap).sort((a,b)=>{
+    const sa=getScore(mn,a)?.totaal||0, sb=getScore(mn,b)?.totaal||0;
+    return sb-sa;
+  });
+  const series = carbuLijst.slice(0,5).map((cb,i)=>{
+    const ri = besteRunVan(carbuMap[cb]);
+    return {label:cb, curve:ri?.run.curveData||[], kleur:KLEUREN[i%KLEUREN.length]};
+  });
+  tekenChart('motor-chart', series, m);
+}
+
+function toonBreakdown(mn, cb){
+  const score = getScore(mn,cb);
+  const combi = analyseCombi(combinaties[mn]?.[cb]||[]);
+  const beste = combi?.beste?.analyse;
+  const tekst = genereerTekst(beste, score);
+  const el = document.getElementById('breakdown-detail');
+  if(!el) return;
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">${esc(motorLabel(mn))} × ${esc(cb)} — Score breakdown</div>
+      ${combi?.condWarning?`<div class="waarschuwing-tekst">⚠️ <div>Testomstandigheden varieerden: ${esc(combi.condWarning)}</div></div>`:''}
+      ${renderBreakdown(score)}
+      ${tekst?`<div class="analyse-tekst">${esc(tekst)}</div>`:''}
+    </div>`;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderCarburateurAnalyse(){
+  // Verzamel alle unieke carburatoren
+  const carbuSet = new Set();
+  Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>carbuSet.add(c)));
+  const carbuLijst = [...carbuSet].sort();
+
+  if(!carbuLijst.length){
+    document.getElementById('main').innerHTML=`
+      <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+      ${subTabsHtml('carburateur')}
+      <div class="empty-state">Geen carburatoren gevonden.</div>`;
+    return;
+  }
+  const cb = gekozenCarbu || carbuLijst[0];
+
+  // Motoren waarop deze carbu getest is
+  const motorenMetCarbu = Object.keys(combinaties)
+    .filter(mn=>combinaties[mn][cb])
+    .sort((a,b)=>motorLabel(a).localeCompare(motorLabel(b),'nl'));
+
+  // Chart series
+  const chartSeries = motorenMetCarbu.slice(0,5).map((mn,i)=>{
+    const ri = besteRunVan(combinaties[mn][cb]);
+    return {label:motorLabel(mn), curve:ri?.run.curveData||[], kleur:KLEUREN[i%KLEUREN.length]};
+  });
+
+  // Gemiddelde score over alle motoren
+  const scores = motorenMetCarbu.map(mn=>getScore(mn,cb)?.totaal||0).filter(s=>s>0);
+  const gemScore = scores.length ? scores.reduce((s,v)=>s+v,0)/scores.length : 0;
+
+  const tblRijen = motorenMetCarbu.map(mn=>{
+    const score = getScore(mn,cb);
+    const combi = analyseCombi(combinaties[mn][cb]);
+    const beste = combi?.beste?.analyse;
+    return `
+      <tr>
+        <td><strong>${esc(motorLabel(mn))}</strong><br><span style="font-size:11px;color:#9ca3af">${esc(mn)}</span></td>
+        <td>${beste?f1(beste.peakHp):'—'}</td>
+        <td>${beste?fRpm(beste.peakHpRpm):'—'}</td>
+        <td>${beste?f2(beste.peakNm):'—'}</td>
+        <td>${combi?combi.aantalRuns:0}</td>
+        <td>${score?`<strong>${score.totaal.toFixed(1)}</strong>`:'-'}</td>
+        <td><span class="chip-gemeten">🟢 Gemeten</span></td>
+      </tr>`;
+  }).join('');
+
+  const opts = carbuLijst.map(c=>`<option value="${esc(c)}"${c===cb?' selected':''}>${esc(c)}</option>`).join('');
+
+  document.getElementById('main').innerHTML=`
+    <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+    ${subTabsHtml('carburateur')}
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <label style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">Carburateur:</label>
+      <select class="sel" style="max-width:300px" onchange="gekozenCarbu=this.value;render()">${opts}</select>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val">${motorenMetCarbu.length}</div><div class="stat-lbl">Geteste motoren</div></div>
+      <div class="stat-card"><div class="stat-val">${gemScore>0?gemScore.toFixed(1):'—'}</div><div class="stat-lbl">Gemiddelde score</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prestaties van ${esc(cb)} per motor</div>
+      <div class="tbl-scroll">
+        <table class="tbl tbl-border">
+          <thead><tr><th>Motor</th><th>Max HP</th><th>RPM HP</th><th>Max Nm</th><th>Runs</th><th>Score</th><th>Status</th></tr></thead>
+          <tbody>${tblRijen||'<tr><td colspan="7" style="text-align:center;padding:24px;color:#9ca3af">Geen data</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    ${motorenMetCarbu.length>1?`
+    <div class="card">
+      <div class="card-title">HP-curve vergelijking</div>
+      <div class="chart-wrap"><canvas id="carbu-chart"></canvas></div>
+    </div>` : ''}`;
+
+  if(motorenMetCarbu.length>1){
+    setTimeout(()=>tekenChart('carbu-chart', chartSeries, 'hp'), 50);
+  }
+}
+
+function renderOptimalisatie(){
+  document.getElementById('main').innerHTML=`
+    <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+    ${subTabsHtml('optimalisatie')}
+    <div class="card">
+      <div class="card-title">Optimale motor/carburateur verdeling</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">
+        Elke carburateur kan maar aan één motor worden toegewezen. De berekening maximaliseert de totale vlootprestatie.
+      </p>
+      <button class="btn btn-blue" onclick="voerOptimalisatieUit()">🔧 Bereken optimale verdeling</button>
+    </div>
+    <div id="opt-resultaat"></div>`;
+}
+
+function voerOptimalisatieUit(){
+  const verdeling = berekenOptimaleVerdeling();
+  const el = document.getElementById('opt-resultaat');
+  if(!verdeling.length){
+    el.innerHTML='<div class="empty-state">Onvoldoende data voor optimalisatie.</div>';
+    return;
+  }
+
+  const rijen = verdeling.map(({motorNr,carbu,score},idx)=>{
+    if(!carbu){
+      return `
+        <div class="opt-rij" style="opacity:.5">
+          <div class="opt-rang">${idx+1}</div>
+          <div class="opt-motor">${esc(motorLabel(motorNr))}</div>
+          <div class="opt-arrow">→</div>
+          <div style="font-size:13px;color:#9ca3af">Geen passende carburateur beschikbaar</div>
+        </div>`;
+    }
+    const scoreObj = getScore(motorNr,carbu);
+    const combi = analyseCombi(combinaties[motorNr]?.[carbu]||[]);
+    const beste = combi?.beste?.analyse;
+    const tekst = genereerTekst(beste, scoreObj);
+    const breakdown = renderBreakdown(scoreObj);
+    const uid = `opt-${idx}`;
+    return `
+      <div class="opt-rij" id="${uid}">
+        <div class="opt-rang">${idx+1}</div>
+        <div>
+          <div class="opt-motor">${esc(motorLabel(motorNr))}</div>
+          <div style="font-size:11px;color:#9ca3af">${esc(motorNr)}</div>
+        </div>
+        <div class="opt-arrow">→</div>
+        <div class="opt-carbu">${esc(carbu)}</div>
+        ${beste?`<span style="font-size:12px;color:#6b7280">${f1(beste.peakHp)} HP / ${f2(beste.peakNm)} Nm</span>`:''}
+        <div class="opt-score">${score.toFixed(1)}</div>
+        <div class="opt-uitleg">
+          ${tekst?`<div class="analyse-tekst" style="margin:0">${esc(tekst)}</div>`:''}
+          <details style="margin-top:10px">
+            <summary style="cursor:pointer;font-size:12px;font-weight:600;color:#2563eb">Score breakdown</summary>
+            <div style="margin-top:8px">${breakdown}</div>
+          </details>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">🏆 Resultaat optimale verdeling</div>
+      ${rijen}
+    </div>`;
+}
+
+function renderRanking(){
+  // Alle combinaties gesorteerd op score
+  const alle = [];
+  Object.entries(combinaties).forEach(([mn,carbuMap])=>{
+    Object.entries(carbuMap).forEach(([cb,runItems])=>{
+      const score = getScore(mn,cb);
+      const combi = analyseCombi(runItems);
+      const beste = combi?.beste?.analyse;
+      if(score) alle.push({mn,cb,score,combi,beste});
+    });
+  });
+  alle.sort((a,b)=>b.score.totaal-a.score.totaal);
+
+  // Per motor beste combinatie (elke motor één keer)
+  const perMotor = new Map();
+  alle.forEach(item=>{
+    if(!perMotor.has(item.mn)) perMotor.set(item.mn, item);
+  });
+  const ranking = [...perMotor.values()].sort((a,b)=>b.score.totaal-a.score.totaal);
+
+  // Carburateur prestaties over alle motoren
+  const perCarbu = {};
+  alle.forEach(item=>{
+    if(!perCarbu[item.cb]) perCarbu[item.cb]={cb:item.cb, scores:[], hpWaarden:[]};
+    perCarbu[item.cb].scores.push(item.score.totaal);
+    if(item.beste?.peakHp) perCarbu[item.cb].hpWaarden.push(item.beste.peakHp);
+  });
+  const carbuRanking = Object.values(perCarbu).map(c=>({
+    cb:c.cb,
+    gemScore:c.scores.reduce((s,v)=>s+v,0)/c.scores.length,
+    aantalMotoren:c.scores.length,
+    gemHp:c.hpWaarden.length?c.hpWaarden.reduce((s,v)=>s+v,0)/c.hpWaarden.length:0
+  })).sort((a,b)=>b.gemScore-a.gemScore);
+
+  const rankRijen = ranking.map(({mn,cb,score,combi,beste},idx)=>`
+    <tr class="${idx===0?'hl':''}">
+      <td style="font-weight:800;color:#d1d5db">${idx+1}</td>
+      <td><strong>${esc(motorLabel(mn))}</strong></td>
+      <td>${esc(cb)}</td>
+      <td>${beste?f1(beste.peakHp):'—'}</td>
+      <td>${beste?f2(beste.peakNm):'—'}</td>
+      <td>${beste?fRpm(beste.peakHpRpm):'—'}</td>
+      <td><strong style="color:${idx===0?'#059669':'#111827'}">${score.totaal.toFixed(1)}</strong></td>
+      <td><span class="chip-gemeten">🟢 Gemeten</span></td>
+    </tr>`).join('');
+
+  const carbuRijen = carbuRanking.map(({cb,gemScore,aantalMotoren,gemHp},idx)=>`
+    <tr>
+      <td style="font-weight:800;color:#d1d5db">${idx+1}</td>
+      <td>${esc(cb)}</td>
+      <td>${aantalMotoren}</td>
+      <td>${gemHp>0?f1(gemHp):'—'}</td>
+      <td><div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill" style="width:${Math.round(gemScore)}%"></div></div><strong>${gemScore.toFixed(1)}</strong></div></td>
+    </tr>`).join('');
+
+  document.getElementById('main').innerHTML=`
+    <h1 class="page-title" style="margin-bottom:20px">Carbu Optimalisatie</h1>
+    ${subTabsHtml('ranking')}
+    <div class="card">
+      <div class="card-title">🏆 Beste motor/carburateur combinaties (beste per motor)</div>
+      <div class="tbl-scroll">
+        <table class="tbl tbl-border">
+          <thead><tr><th>Rang</th><th>Motor</th><th>Carbu</th><th>Max HP</th><th>Max Nm</th><th>RPM HP</th><th>Score</th><th>Status</th></tr></thead>
+          <tbody>${rankRijen||'<tr><td colspan="8" style="text-align:center;padding:24px;color:#9ca3af">Geen data</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Carburateuren ranking (gemiddeld over alle geteste motoren)</div>
+      <div class="tbl-scroll">
+        <table class="tbl tbl-border">
+          <thead><tr><th>Rang</th><th>Carburateur</th><th>Motoren</th><th>Gem. HP</th><th>Gem. Score</th></tr></thead>
+          <tbody>${carbuRijen||'<tr><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af">Geen data</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function render(){
+  if(huidigView==='overzicht') renderOverzicht();
+  else if(huidigView==='motor') renderMotorAnalyse();
+  else if(huidigView==='carburateur') renderCarburateurAnalyse();
+  else if(huidigView==='optimalisatie') renderOptimalisatie();
+  else if(huidigView==='ranking') renderRanking();
+}
+
+function gaaNaar(view){
+  huidigView = view;
+  if(chartInstantie){chartInstantie.destroy();chartInstantie=null;}
+  render();
+  window.scrollTo(0,0);
+}
+
+// ── AUTH + INIT ───────────────────────────────────────────────────────────────
+async function init(){
+  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){sb=null;}
+  if(!sb){window.location.href='/';return;}
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){
+    document.getElementById('login-screen').classList.add('active');
+    return;
+  }
+  const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
+  const rol=new Set((rd||[]).map(r=>r.rol));
+  if(!rol.has('dfk-engines')&&!rol.has('admin')){
+    window.location.href=rol.has('dfk-logistics')?'/dfk-logistics/':'/';return;
+  }
+  sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:p})=>{
+    const el=document.getElementById('header-naam');
+    if(el) el.textContent=p?.naam||session.user.email.split('@')[0];
+  });
+  if(rol.has('admin')){
+    document.getElementById('nav-materiaal').style.display='';
+  }
+  if(rol.has('admin')||rol.has('dfk-sales')){
+    document.getElementById('nav-sales-wrap').style.display='';
+  }
+  await laadData();
+}
+init();
+</script>
+</body>
+</html>
