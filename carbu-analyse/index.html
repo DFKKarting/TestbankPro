@@ -636,47 +636,85 @@ function tekenChart(canvasId, series, modus='hp'){
 }
 
 // ── SCORE BREAKDOWN HTML ──────────────────────────────────────────────────────
-function renderBreakdown(score, maxWaarde=100){
+function renderBreakdown(score, analyse){
   if(!score) return '<div style="color:#9ca3af;font-size:12px">Geen data</div>';
   const {components, totaal} = score;
-  const labels = {
-    peakVermogen:'Piekvermogen', middengebied:'Middengebied (9-11.5k)',
-    bovengebied:'Bovengebied (>11.5k)', koppel:'Koppel',
-    powerbandBreedte:'Powerbandbreedgte', curveKwaliteit:'Curve kwaliteit'
+
+  // Labels, uitleg en werkelijke waarde per component
+  const config = {
+    peakVermogen: {
+      label: 'Piekvermogen',
+      uitleg: 'Hoogste gemeten HP — hoe hoger t.o.v. de rest van de vloot, hoe hoger de score.',
+      waarde: analyse?.peakHp ? `${f1(analyse.peakHp)} HP @ ${fRpm(analyse.peakHpRpm)} rpm` : null
+    },
+    middengebied: {
+      label: 'Middengebied (9.000–11.500 rpm)',
+      uitleg: 'Gemiddeld vermogen in het meest gebruikte toerentalgebied. Breed en sterk middengebied = betere raceprestatie.',
+      waarde: analyse?.gemHpMidden ? `${f1(analyse.gemHpMidden)} HP gem.` : null
+    },
+    bovengebied: {
+      label: 'Bovengebied (>11.500 rpm)',
+      uitleg: 'Gemiddeld vermogen boven 11.500 rpm. Hoge score = het vermogen blijft lang sterk na de piek.',
+      waarde: analyse?.gemHpTop ? `${f1(analyse.gemHpTop)} HP gem.` : null
+    },
+    koppel: {
+      label: 'Koppel (9.000–11.500 rpm)',
+      uitleg: 'Gemiddeld koppel in het middengebied. Meer koppel = betere acceleratie uit de bochten.',
+      waarde: analyse?.gemNmMidden ? `${f1(analyse.gemNmMidden)} Nm gem.` : null
+    },
+    powerbandBreedte: {
+      label: 'Powerbandbreedgte',
+      uitleg: `Toerentalgebied waar het vermogen ≥${Math.round(POWERBAND_DREMPEL*100)}% van de piek is. Breder = meer speelruimte voor de rijder.`,
+      waarde: analyse?.powerbandBreedte ? `${fRpm(analyse.powerbandBreedte)} rpm breedte` : null
+    },
+    curveKwaliteit: {
+      label: 'Curve kwaliteit',
+      uitleg: 'Vloeiendheid en consistentie van de curve. Spikes of onregelmatigheden verlagen deze score.',
+      waarde: analyse?.curveKwaliteit != null
+        ? (analyse.curveKwaliteit>=0.85?'Uitstekend':analyse.curveKwaliteit>=0.65?'Goed':'Matig')
+        : null
+    }
   };
-  const gewichten = {
-    peakVermogen:30,middengebied:20,bovengebied:15,koppel:15,powerbandBreedte:10,curveKwaliteit:10
-  };
+
+  const kleurBalk = v => v>=85?'#059669':v>=65?'#2563eb':v>=45?'#d97706':'#dc2626';
+
   const rijen = Object.keys(components).map(k=>{
     const v = components[k];
-    const max = gewichten[k]||10;
     const bijdrage = v * (ANALYSE_GEWICHTEN[k]||0);
+    const cfg = config[k]||{label:k,uitleg:'',waarde:null};
     return `
-      <div class="breakdown-row">
-        <div class="breakdown-lbl">${labels[k]||k}</div>
-        <div class="score-bar-wrap" style="flex:1">
-          <div class="score-bar"><div class="score-bar-fill" style="width:${Math.round(v)}%"></div></div>
+      <div style="padding:10px 0;border-top:1px solid #f3f4f6">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+          <div style="min-width:200px">
+            <div style="font-size:13px;font-weight:700;color:#111827">${cfg.label}</div>
+            ${cfg.waarde?`<div style="font-size:12px;color:#2563eb;font-weight:600;margin-top:1px">${cfg.waarde}</div>`:''}
+          </div>
+          <div class="score-bar-wrap" style="flex:1">
+            <div class="score-bar" style="height:8px"><div class="score-bar-fill" style="width:${Math.round(v)}%;background:${kleurBalk(v)}"></div></div>
+          </div>
+          <div style="min-width:70px;text-align:right;font-size:13px;font-weight:700;color:${kleurBalk(v)}">${v.toFixed(1)}<span style="font-size:11px;color:#9ca3af;font-weight:400"> /100</span></div>
+          <div style="min-width:40px;text-align:right;font-size:11px;color:#9ca3af">×${ANALYSE_GEWICHTEN[k]||0}</div>
+          <div style="min-width:44px;text-align:right;font-size:13px;font-weight:700;color:#374151">${bijdrage.toFixed(1)}</div>
         </div>
-        <div class="breakdown-val">${v.toFixed(1)} / 100</div>
-        <div class="breakdown-pct" style="color:#6b7280;font-size:11px">×${ANALYSE_GEWICHTEN[k]||0}</div>
-        <div class="breakdown-val" style="min-width:54px">${bijdrage.toFixed(1)}</div>
+        <div style="font-size:11px;color:#9ca3af;padding-left:0;line-height:1.4">${cfg.uitleg}</div>
       </div>`;
   }).join('');
+
   return `
-    <div style="font-size:11px;color:#9ca3af;display:flex;gap:10px;padding:0 0 6px;border-bottom:1px solid #e5e7eb;margin-bottom:2px">
-      <div style="min-width:130px">Component</div>
+    <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;display:flex;gap:10px;padding:0 0 4px">
+      <div style="min-width:200px">Component / Waarde</div>
       <div style="flex:1">Score</div>
-      <div style="min-width:90px;text-align:right">Score/100</div>
+      <div style="min-width:70px;text-align:right">Score</div>
       <div style="min-width:40px;text-align:right">Gewicht</div>
-      <div style="min-width:54px;text-align:right">Bijdrage</div>
+      <div style="min-width:44px;text-align:right">Bijdrage</div>
     </div>
     ${rijen}
-    <div class="breakdown-row" style="border-top:2px solid #e5e7eb;margin-top:4px">
-      <div class="breakdown-lbl" style="font-weight:700;color:#111827">Totaalscore</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0 0;border-top:2px solid #111827;margin-top:6px">
+      <div style="min-width:200px;font-size:14px;font-weight:800;color:#111827">Totaalscore</div>
       <div style="flex:1"></div>
-      <div class="breakdown-val" style="font-size:16px;font-weight:800;color:#059669">${totaal.toFixed(1)}</div>
-      <div class="breakdown-pct"></div>
-      <div class="breakdown-val"></div>
+      <div style="font-size:22px;font-weight:800;color:#059669">${totaal.toFixed(1)}</div>
+      <div style="min-width:40px"></div>
+      <div style="min-width:44px;text-align:right;font-size:13px;font-weight:700;color:#059669">${totaal.toFixed(1)}</div>
     </div>`;
 }
 
@@ -862,7 +900,7 @@ function toonBreakdown(mn, cb){
     <div class="card">
       <div class="card-title">${esc(motorLabel(mn))} × ${esc(cb)} — Score breakdown</div>
       ${combi?.condWarning?`<div class="waarschuwing-tekst">⚠️ <div>Testomstandigheden varieerden: ${esc(combi.condWarning)}</div></div>`:''}
-      ${renderBreakdown(score)}
+      ${renderBreakdown(score, beste)}
       ${tekst?`<div class="analyse-tekst">${esc(tekst)}</div>`:''}
     </div>`;
   el.scrollIntoView({behavior:'smooth', block:'nearest'});
@@ -983,7 +1021,7 @@ function voerOptimalisatieUit(){
     const combi = analyseCombi(combinaties[motorNr]?.[carbu]||[]);
     const beste = combi?.beste?.analyse;
     const tekst = genereerTekst(beste, scoreObj);
-    const breakdown = renderBreakdown(scoreObj);
+    const breakdown = renderBreakdown(scoreObj, beste);
     const uid = `opt-${idx}`;
     return `
       <div class="opt-rij" id="${uid}">
