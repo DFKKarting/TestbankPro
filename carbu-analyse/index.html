@@ -250,6 +250,23 @@ function alleCarbuNamen(){
   return [...set].sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
 }
 
+async function syncCarbuNamenNaarDB(){
+  const namen = new Set();
+  sessies.forEach(s=>{
+    if(s.carbu?.trim()) namen.add(s.carbu.trim());
+    (s.runs||[]).forEach(r=>{ if(r.carbu?.trim()) namen.add(r.carbu.trim()); });
+  });
+  const bestaand = new Set(carbuLijstDB.map(c=>c.naam));
+  const nieuw = [...namen].filter(n=>!bestaand.has(n));
+  if(!nieuw.length) return;
+  const records = nieuw.map(naam=>({
+    id: (crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16))),
+    naam, motor_type:'', merk:'', model:'', baan_hoog:'', baan_laag:'', test_hoog:'', test_laag:'', opmerkingen:''
+  }));
+  await sb.from('carburatoren').upsert(records,{onConflict:'id'});
+  await laadCarbuLijstDB();
+}
+
 async function laadData(){
   document.getElementById('db-status').innerHTML='<span class="db-dot" style="background:#10b981"></span>Supabase';
   const [{data:sd},{data:md}] = await Promise.all([
@@ -260,6 +277,7 @@ async function laadData(){
   sessies = (sd||[]).map(fromRow);
   motorenCache = {};
   (md||[]).forEach(r=>{motorenCache[r.motor_nummer]=r;});
+  await syncCarbuNamenNaarDB();
   verwerkCombinaties();
   berekenAlleScores();
   render();
