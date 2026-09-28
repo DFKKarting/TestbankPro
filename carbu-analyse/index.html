@@ -289,19 +289,38 @@ function interpoleerHp(curve, rpm){
   return r ? r.hp : null;
 }
 
+function normaliseerCurve(curve){
+  // Oude data heeft HP in Watts — zelfde fix als tekenLijnChart in analyse/index.html
+  const maxHpRaw = Math.max(...curve.map(p=>p.hp));
+  if(maxHpRaw > 100){
+    return curve.map(p=>({...p, hp: p.hp/745.7}));
+  }
+  return curve;
+}
+
 function analyseRun(run){
-  const curve = run.curveData||[];
-  if(!curve.length) return null;
+  const rawCurve = run.curveData||[];
+  if(!rawCurve.length) return null;
+  const curve = normaliseerCurve(rawCurve);
   const sorted = [...curve].sort((a,b)=>a.rpm-b.rpm);
   const minRpm = sorted[0].rpm;
   const maxRpm = sorted[sorted.length-1].rpm;
 
-  // Piek HP en Nm
-  let peakHp=0, peakHpRpm=0, peakNm=0, peakNmRpm=0;
-  sorted.forEach(p=>{
-    if(p.hp>peakHp){peakHp=p.hp;peakHpRpm=p.rpm;}
-    if(p.nm>peakNm){peakNm=p.nm;peakNmRpm=p.rpm;}
-  });
+  // Piek HP: gebruik gecorrigeerde scalaire waarde van de run indien aanwezig
+  let peakHpRpm=0;
+  let peakHpCurve=0;
+  sorted.forEach(p=>{if(p.hp>peakHpCurve){peakHpCurve=p.hp;peakHpRpm=p.rpm;}});
+  const peakHp = (run.vermogen && run.vermogen>0 && run.vermogen<100)
+    ? run.vermogen : peakHpCurve;
+  if(run.vermogenRpm) peakHpRpm = run.vermogenRpm;
+
+  // Piek Nm: gebruik gecorrigeerde scalaire waarde van de run indien aanwezig
+  let peakNmRpm=0;
+  let peakNmCurve=0;
+  sorted.forEach(p=>{if(p.nm>peakNmCurve){peakNmCurve=p.nm;peakNmRpm=p.rpm;}});
+  const peakNm = (run.koppel && run.koppel>0 && run.koppel<100)
+    ? run.koppel : peakNmCurve;
+  if(run.koppelRpm) peakNmRpm = run.koppelRpm;
 
   // HP bij vaste RPM-punten
   const hpBijRpm={};
@@ -586,15 +605,18 @@ function tekenChart(canvasId, series, modus='hp'){
   const canvas = document.getElementById(canvasId);
   if(!canvas) return;
 
-  const datasets = series.map((s,i)=>({
-    label: s.label,
-    data: (s.curve||[]).map(p=>({x:p.rpm,y:modus==='hp'?p.hp:p.nm})),
-    borderColor: s.kleur||KLEUREN[i%KLEUREN.length],
-    backgroundColor: 'transparent',
-    borderWidth: 2.5,
-    pointRadius: 0,
-    tension: 0.3
-  }));
+  const datasets = series.map((s,i)=>{
+    const curve = normaliseerCurve(s.curve||[]);
+    return {
+      label: s.label,
+      data: curve.map(p=>({x:p.rpm,y:modus==='hp'?p.hp:p.nm})),
+      borderColor: s.kleur||KLEUREN[i%KLEUREN.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      tension: 0.3
+    };
+  });
 
   chartInstantie = new Chart(canvas, {
     type:'line',
