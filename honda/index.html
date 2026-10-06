@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/logos/dfk-enginges-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="DFK Engines">
+<title>Honda Motoren — DFK Engines</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;overflow-x:hidden}
+#header{background:#111827;color:#fff;padding:0 16px;display:flex;flex-direction:column;position:sticky;top:0;z-index:100}
+#header-top{display:flex;align-items:center;height:54px;gap:10px}
+#nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;border-top:1px solid #1f2937}
+#nav-tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;color:#9ca3af;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;flex-shrink:0;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab:hover{color:#fff}
+.tab.active{color:#60a5fa;border-bottom-color:#60a5fa}
+.logo{display:flex;align-items:center;gap:12px;cursor:pointer;order:-1}
+.logo-name{font-weight:800;font-size:18px;letter-spacing:-0.5px}
+.nav-wrap{position:relative;flex-shrink:0;order:1}
+.nav-toggle{background:#374151;border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;gap:7px;font-weight:700;font-family:inherit}
+.nav-toggle:hover{background:#4b5563}
+.nav-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#1f2937;border-radius:12px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;display:none;overflow:hidden;border:1px solid #374151}
+.nav-dropdown.open{display:block}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 16px;color:#d1d5db;cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:background .12s}
+.nav-item:hover{background:#374151;color:#fff}
+.nav-divider{height:1px;background:#374151;margin:4px 0}
+#main{max-width:860px;margin:0 auto;padding:24px 16px}
+.page-title{font-size:19px;font-weight:800;margin:0}
+.head-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.btn-blauw{background:#cc0000;border:none;color:#fff;border-radius:8px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-blauw:hover{background:#aa0000}
+.btn-outline{background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#374151}
+.btn-outline:hover{border-color:#cc0000;color:#cc0000}
+.btn-rood{background:#ef4444;border:none;color:#fff;border-radius:8px;padding:7px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-rood:hover{background:#dc2626}
+.btn-back{background:none;border:none;cursor:pointer;color:#6b7280;font-size:20px;padding:0;font-family:inherit}
+.empty-state{background:#fff;border-radius:12px;text-align:center;padding:48px 24px;color:#9ca3af;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;color:#374151;margin-bottom:6px}
+
+/* Motor cards */
+.motor-card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.motor-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.motor-card-inner{padding:14px 18px;display:flex;align-items:center;gap:14px}
+.motor-nr{font-size:16px;font-weight:800;color:#111827;flex:1;min-width:0}
+.motor-klant{font-size:12px;color:#6b7280;margin-top:2px}
+.motor-datum{font-size:12px;color:#9ca3af;white-space:nowrap}
+.type-badge-160{background:#fef9c3;color:#854d0e;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.type-badge-200{background:#fee2e2;color:#991b1b;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.zegel-val{font-size:12px;color:#374151;background:#f3f4f6;border-radius:5px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
+
+/* Formulier */
+.form-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.1);padding:24px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px}
+.inp{border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#111827;background:#fff;transition:border-color .15s;width:100%}
+.inp:focus{outline:none;border-color:#cc0000}
+.sel{border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#111827;background:#fff;width:100%;cursor:pointer}
+.sel:focus{outline:none;border-color:#cc0000}
+.actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+
+/* Zoekbalk */
+.zoek-wrap{position:relative;flex:1;min-width:180px}
+.zoek-inp{border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px 8px 34px;font-size:14px;font-family:inherit;color:#111827;width:100%;background:#fff}
+.zoek-inp:focus{outline:none;border-color:#cc0000}
+.zoek-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:15px}
+
+/* Sectie labels */
+.sectie-label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
+
+@media(max-width:600px){
+  #header{height:auto;min-height:52px;padding:8px 12px;gap:8px}
+  #main{padding:12px 10px}
+  .motor-card-inner{flex-wrap:wrap;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div id="header-top">
+    <div class="logo" onclick="window.location.href='/'">
+      <img src="/logos/dfk-engines-transp.png" style="height:44px;object-fit:contain;display:block">
+      <span class="logo-name">DFK Engines</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <div class="nav-wrap">
+        <button class="nav-toggle" onclick="toggleNav()" style="display:flex;align-items:center;gap:6px">
+          <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="font-size:11px;opacity:.7">&#9660;</span>
+        </button>
+        <div class="nav-dropdown" id="nav-dropdown">
+          <div id="nav-materiaal" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
+            <div class="nav-divider"></div>
+          </div>
+          <div id="nav-sales-wrap" style="display:none">
+            <button class="nav-item" onclick="window.location.href='/dfk-sales/'">DFK Sales</button>
+            <div class="nav-divider"></div>
+          </div>
+          <button class="nav-item" onclick="doLogout()">Afmelden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav id="nav-tabs">
+    <button class="tab" onclick="window.location.href='/'">Sessies</button>
+    <button class="tab" onclick="window.location.href='/motoren/'">Motoren</button>
+    <button class="tab" onclick="window.location.href='/klanten/'">Klanten</button>
+    <button class="tab" onclick="window.location.href='/analyse/'">Analyse</button>
+    <button class="tab" onclick="window.location.href='/carburators/'">Carburatoren</button>
+    <button class="tab" onclick="window.location.href='/revisie/'">Revisies</button>
+    <button class="tab active" onclick="window.location.href='/honda/'">Honda</button>
+    <button class="tab" onclick="window.location.href='/carbu-analyse/'">Carbu Optimalisatie</button>
+  </nav>
+</header>
+
+<div id="main"><div style="text-align:center;padding:60px;color:#6b7280">⏳ Laden...</div></div>
+
+<script>
+const SUPABASE_URL = 'https://jonfknallwdyknxwcqww.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbmZrbmFsbHdkeWtueHdjcXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDAwMjUsImV4cCI6MjA5NzgxNjAyNX0.A-uUnNT-Nlwf9ArAd56Ujml5A0XW6G0_mj8RE24On8A';
+
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let sb;
+let motoren = [];
+let view = 'lijst';
+let huidig = null;
+let zoek = '';
+
+// ── DB HELPERS ────────────────────────────────────────────────────────────────
+function dbNaarJs(r){
+  return {
+    id: r.id,
+    motorNummer: r.motor_nummer||'',
+    type: r.type||'GX160',
+    zegelNummer: r.zegel_nummer||'',
+    klant: r.klant||'',
+    datumGebouwd: r.datum_gebouwd||'',
+    opmerkingen: r.opmerkingen||''
+  };
+}
+function jsNaarDb(m){
+  return {
+    id: m.id,
+    motor_nummer: m.motorNummer,
+    type: m.type,
+    zegel_nummer: m.zegelNummer||'',
+    klant: m.klant||'',
+    datum_gebouwd: m.datumGebouwd||null,
+    opmerkingen: m.opmerkingen||'',
+    updated_at: new Date().toISOString()
+  };
+}
+
+async function laadMotoren(){
+  const {data,error} = await sb.from('honda_motoren').select('*').order('created_at',{ascending:false});
+  if(error){ console.error(error); motoren=[]; return; }
+  motoren = (data||[]).map(dbNaarJs);
+}
+
+async function slaOpInDb(obj){
+  const {error} = await sb.from('honda_motoren').upsert(jsNaarDb(obj));
+  if(error) throw error;
+  const idx = motoren.findIndex(m=>m.id===obj.id);
+  if(idx>=0) motoren[idx]=obj; else motoren.unshift(obj);
+}
+
+async function verwijderUitDb(id){
+  const {error} = await sb.from('honda_motoren').delete().eq('id',id);
+  if(error) throw error;
+  motoren = motoren.filter(m=>m.id!==id);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  if(view==='lijst') renderLijst();
+  else renderForm();
+}
+
+function renderResultaten(){
+  const gefilterd = zoek.trim()
+    ? motoren.filter(m=>[m.motorNummer,m.klant,m.type,m.zegelNummer].join(' ').toLowerCase().includes(zoek.toLowerCase()))
+    : [...motoren];
+
+  const groepen = {};
+  gefilterd.forEach(m=>{
+    const k = m.type||'Onbekend';
+    if(!groepen[k]) groepen[k]=[];
+    groepen[k].push(m);
+  });
+
+  const leeg = motoren.length===0;
+  const res = document.getElementById('motor-resultaten');
+  if(!res) return;
+
+  if(leeg){
+    res.innerHTML=`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">Nog geen Honda motoren</div><p style="font-size:13px;margin-top:6px">Voeg je eerste Honda motor toe.</p></div>`;
+    return;
+  }
+  if(gefilterd.length===0){
+    res.innerHTML=`<div class="empty-state"><div class="empty-title">Geen resultaten voor "${esc(zoek)}"</div></div>`;
+    return;
+  }
+
+  const typeVolgorde = ['GX160','GX200'];
+  const sleutels = [...new Set([...typeVolgorde, ...Object.keys(groepen)])].filter(k=>groepen[k]);
+
+  res.innerHTML = sleutels.map(groep=>`
+    <div class="sectie-label">${esc(groep)}</div>
+    ${groepen[groep].map(m=>motorKaart(m)).join('')}
+  `).join('');
+}
+
+function renderLijst(){
+  if(!document.getElementById('motor-resultaten')){
+    document.getElementById('main').innerHTML = `
+      <div class="head-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Honda.svg/120px-Honda.svg.png" style="height:28px;object-fit:contain" onerror="this.style.display='none'">
+          <h2 class="page-title">Honda Motoren</h2>
+        </div>
+        <div class="zoek-wrap">
+          <span class="zoek-icon">🔍</span>
+          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op nummer, klant, type…" value="${esc(zoek)}">
+        </div>
+        <button class="btn-blauw" onclick="nieuwMotor()">+ Nieuwe motor</button>
+      </div>
+      <div id="motor-resultaten"></div>`;
+    document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; renderResultaten(); });
+  }
+  renderResultaten();
+}
+
+function motorKaart(m){
+  const badge = m.type==='GX200'
+    ? `<span class="type-badge-200">GX200</span>`
+    : `<span class="type-badge-160">GX160</span>`;
+  const datum = m.datumGebouwd ? new Date(m.datumGebouwd).toLocaleDateString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+  return `<div class="motor-card" onclick="bewerkMotor('${esc(m.id)}')">
+    <div class="motor-card-inner">
+      ${badge}
+      <div style="flex:1;min-width:0">
+        <div class="motor-nr">${esc(m.motorNummer)}</div>
+        ${m.klant?`<div class="motor-klant">${esc(m.klant)}</div>`:''}
+      </div>
+      ${m.zegelNummer?`<span class="zegel-val">Zegel: ${esc(m.zegelNummer)}</span>`:''}
+      ${datum?`<span class="motor-datum">${esc(datum)}</span>`:''}
+      <span style="color:#9ca3af;font-size:18px">›</span>
+    </div>
+    ${m.opmerkingen?`<div style="padding:8px 18px;font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;white-space:pre-wrap">${esc(m.opmerkingen)}</div>`:''}
+  </div>`;
+}
+
+function renderForm(){
+  const isNieuw = view==='nieuw';
+  const m = huidig||{};
+  document.getElementById('main').innerHTML = `
+    <div class="head-row" style="margin-bottom:20px">
+      <button class="btn-back" onclick="gaTerug()">←</button>
+      <h2 class="page-title">${isNieuw?'Nieuwe Honda motor':'Honda motor bewerken'}</h2>
+    </div>
+    <div class="form-card">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field">
+          <label class="field-label">Type *</label>
+          <select class="sel" id="f-type">
+            <option value="GX160"${m.type==='GX160'||!m.type?' selected':''}>GX160</option>
+            <option value="GX200"${m.type==='GX200'?' selected':''}>GX200</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Motornummer *</label>
+          <input class="inp" id="f-nr" placeholder="bijv. GX160-1234567" value="${esc(m.motorNummer||'')}">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field">
+          <label class="field-label">Zegelnummer</label>
+          <input class="inp" id="f-zegel" placeholder="bijv. Z-001" value="${esc(m.zegelNummer||'')}">
+        </div>
+        <div class="field">
+          <label class="field-label">Klant</label>
+          <input class="inp" id="f-klant" placeholder="Naam van de klant" value="${esc(m.klant||'')}">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:20px">
+        <div class="field">
+          <label class="field-label">Datum gebouwd</label>
+          <input class="inp" type="date" id="f-datum" value="${esc(m.datumGebouwd||'')}">
+        </div>
+        <div class="field">
+          <label class="field-label">Opmerkingen</label>
+          <input class="inp" id="f-op" placeholder="Optionele notitie" value="${esc(m.opmerkingen||'')}">
+        </div>
+      </div>
+
+      <div id="fout-box" style="display:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600"></div>
+
+      <div class="actions-row">
+        <button class="btn-blauw" onclick="slaOp()">Opslaan</button>
+        <button class="btn-outline" onclick="gaTerug()">Annuleren</button>
+        ${!isNieuw?`<button class="btn-rood" style="margin-left:auto" onclick="verwijderMotor('${esc(m.id)}')">Verwijderen</button>`:''}
+      </div>
+    </div>`;
+}
+
+// ── ACTIES ────────────────────────────────────────────────────────────────────
+function nieuwMotor(){
+  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:''};
+  view='nieuw'; render();
+}
+function bewerkMotor(id){ huidig=motoren.find(m=>m.id===id)||null; if(!huidig) return; view='edit'; render(); }
+function gaTerug(){ huidig=null; view='lijst'; render(); }
+
+async function slaOp(){
+  const nr = document.getElementById('f-nr').value.trim();
+  if(!nr){
+    const b=document.getElementById('fout-box'); b.textContent='⚠️ Vul een motornummer in.'; b.style.display='block'; return;
+  }
+  const obj = {
+    id: huidig.id,
+    motorNummer: nr,
+    type:         document.getElementById('f-type').value,
+    zegelNummer:  document.getElementById('f-zegel').value.trim(),
+    klant:        document.getElementById('f-klant').value.trim(),
+    datumGebouwd: document.getElementById('f-datum').value||'',
+    opmerkingen:  document.getElementById('f-op').value.trim(),
+  };
+  const btn = document.querySelector('.btn-blauw');
+  if(btn){ btn.disabled=true; btn.textContent='Opslaan…'; }
+  try{
+    await slaOpInDb(obj);
+    gaTerug();
+  }catch(e){
+    const b=document.getElementById('fout-box'); b.textContent='⚠️ Fout bij opslaan: '+e.message; b.style.display='block';
+    if(btn){ btn.disabled=false; btn.textContent='Opslaan'; }
+  }
+}
+
+function verwijderMotor(id){
+  customConfirm({
+    titel:'Motor verwijderen?',
+    tekst:'Deze Honda motor wordt permanent verwijderd.',
+    icoon:'🗑️',
+    bevestig:'Verwijderen',
+    bevestigKleur:'#ef4444',
+    onOk: async ()=>{
+      try{ await verwijderUitDb(id); gaTerug(); }
+      catch(e){ alert('Fout bij verwijderen: '+e.message); }
+    }
+  });
+}
+
+// ── CUSTOM CONFIRM ────────────────────────────────────────────────────────────
+function customConfirm({titel='',tekst='',icoon='',bevestig='OK',bevestigKleur='#cc0000',onOk}={}){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px 32px;box-shadow:0 8px 40px rgba(0,0,0,0.18);max-width:340px;width:90%;text-align:center">
+    ${icoon?`<div style="font-size:32px;margin-bottom:10px">${icoon}</div>`:''}
+    <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:6px">${titel}</div>
+    ${tekst?`<div style="font-size:13px;color:#6b7280;margin-bottom:20px">${tekst}</div>`:'<div style="margin-bottom:20px"></div>'}
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button style="background:#f3f4f6;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit" onclick="this.closest('div[style]').remove()">Annuleren</button>
+      <button style="background:${bevestigKleur};border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit" id="cc-ok">${bevestig}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.querySelector('#cc-ok').onclick=()=>{el.remove();onOk();};
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function toggleNav(){ document.getElementById('nav-dropdown').classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.nav-wrap')) document.getElementById('nav-dropdown')?.classList.remove('open'); });
+
+async function doLogout(){
+  try{ await sb.auth.signOut(); }catch{}
+  window.location.href='/';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init(){
+  try{
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){window.location.href='/';return;}
+    const {data:rd}=await sb.from('user_roles').select('rol').eq('user_email',session.user.email);
+    const rol=new Set((rd||[]).map(r=>r.rol));
+    if(!rol.has('dfk-engines')&&!rol.has('admin')){window.location.href=rol.has('dfk-logistics')?'/dfk-logistics/':'/';return;}
+    sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:p})=>{
+      const el=document.getElementById('header-naam'); if(el) el.textContent=p?.naam||session.user.email.split('@')[0];
+    });
+    if(rol.has('admin')){const _m=document.getElementById('nav-materiaal');if(_m)_m.style.display='';}
+    if(rol.has('admin')){const _b=document.getElementById('nav-instellingen-wrap');if(_b)_b.style.display='';}
+    if(rol.has('admin')||rol.has('dfk-sales')){const _s=document.getElementById('nav-sales-wrap');if(_s)_s.style.display='';}
+  }catch{window.location.href='/';return;}
+  await laadMotoren();
+  render();
+}
+init();
+</script>
+</body>
+</html>
