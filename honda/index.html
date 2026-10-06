@@ -121,8 +121,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
     <button class="tab" onclick="window.location.href='/analyse/'">Analyse</button>
     <button class="tab" onclick="window.location.href='/carburators/'">Carburatoren</button>
     <button class="tab" onclick="window.location.href='/revisie/'">Revisies</button>
+        <button class="tab" onclick="window.location.href='/carbu-analyse/'">Carbu Optimalisatie</button>
     <button class="tab active" onclick="window.location.href='/honda/'" style="margin-left:auto;border-left:1px solid #374151;padding-left:18px">Honda</button>
-    <button class="tab" onclick="window.location.href='/carbu-analyse/'">Carbu Optimalisatie</button>
   </nav>
 </header>
 
@@ -147,6 +147,7 @@ function dbNaarJs(r){
     id: r.id,
     motorNummer: r.motor_nummer||'',
     type: r.type||'GX160',
+    klasse: r.klasse||'',
     zegelNummer: r.zegel_nummer||'',
     klant: r.klant||'',
     datumGebouwd: r.datum_gebouwd||'',
@@ -159,6 +160,7 @@ function jsNaarDb(m){
     id: m.id,
     motor_nummer: m.motorNummer,
     type: m.type,
+    klasse: m.klasse||'',
     zegel_nummer: m.zegelNummer||'',
     klant: m.klant||'',
     datum_gebouwd: m.datumGebouwd||null,
@@ -249,7 +251,7 @@ function renderLijst(){
 
 function motorKaart(m){
   const badge = m.type==='GX200'
-    ? `<span class="type-badge-200">GX200</span>`
+    ? `<span class="type-badge-200">GX200${m.klasse?' · '+m.klasse:''}</span>`
     : `<span class="type-badge-160">GX160</span>`;
   const datum = m.datumGebouwd ? new Date(m.datumGebouwd).toLocaleDateString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
   return `<div class="motor-card" onclick="bewerkMotor('${esc(m.id)}')">
@@ -304,14 +306,22 @@ function renderForm(){
       <div class="form-grid" style="margin-bottom:14px">
         <div class="field">
           <label class="field-label">Type *</label>
-          <select class="sel" id="f-type">
+          <select class="sel" id="f-type" onchange="document.getElementById('klasse-wrap').style.display=this.value==='GX200'?'':'none'">
             <option value="GX160"${m.type==='GX160'||!m.type?' selected':''}>GX160</option>
             <option value="GX200"${m.type==='GX200'?' selected':''}>GX200</option>
           </select>
         </div>
+        <div class="field" id="klasse-wrap" style="display:${m.type==='GX200'?'':'none'}">
+          <label class="field-label">Klasse</label>
+          <select class="sel" id="f-klasse">
+            <option value=""${!m.klasse?' selected':''}>Nog niet bekend</option>
+            <option value="Junior"${m.klasse==='Junior'?' selected':''}>Junior</option>
+            <option value="Senior"${m.klasse==='Senior'?' selected':''}>Senior</option>
+          </select>
+        </div>
         <div class="field">
           <label class="field-label">Motornummer *</label>
-          <input class="inp" id="f-nr" placeholder="bijv. GX160-1234567" value="${esc(m.motorNummer||'')}">
+          <input class="inp" id="f-nr" placeholder="bijv. GX200-1234567" value="${esc(m.motorNummer||'')}">
         </div>
       </div>
       <div class="form-grid" style="margin-bottom:14px">
@@ -353,7 +363,7 @@ function renderForm(){
 
 // ── ACTIES ────────────────────────────────────────────────────────────────────
 function nieuwMotor(){
-  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:'',zegelHistorie:[]};
+  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',klasse:'',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:'',zegelHistorie:[]};
   view='nieuw'; render();
 }
 function bewerkMotor(id){ huidig=motoren.find(m=>m.id===id)||null; if(!huidig) return; view='edit'; render(); }
@@ -364,10 +374,12 @@ async function slaOp(){
   if(!nr){
     const b=document.getElementById('fout-box'); b.textContent='⚠️ Vul een motornummer in.'; b.style.display='block'; return;
   }
+  const type = document.getElementById('f-type').value;
   const obj = {
     id: huidig.id,
     motorNummer: nr,
-    type:         document.getElementById('f-type').value,
+    type,
+    klasse: type==='GX200' ? (document.getElementById('f-klasse').value||'') : '',
     zegelNummer:  document.getElementById('f-zegel').value.trim(),
     klant:        document.getElementById('f-klant').value.trim(),
     datumGebouwd: document.getElementById('f-datum').value||'',
