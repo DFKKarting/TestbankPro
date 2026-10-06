@@ -150,7 +150,8 @@ function dbNaarJs(r){
     zegelNummer: r.zegel_nummer||'',
     klant: r.klant||'',
     datumGebouwd: r.datum_gebouwd||'',
-    opmerkingen: r.opmerkingen||''
+    opmerkingen: r.opmerkingen||'',
+    zegelHistorie: r.zegel_historie||[]
   };
 }
 function jsNaarDb(m){
@@ -162,6 +163,7 @@ function jsNaarDb(m){
     klant: m.klant||'',
     datum_gebouwd: m.datumGebouwd||null,
     opmerkingen: m.opmerkingen||'',
+    zegel_historie: m.zegelHistorie||[],
     updated_at: new Date().toISOString()
   };
 }
@@ -261,7 +263,32 @@ function motorKaart(m){
       ${datum?`<span class="motor-datum">${esc(datum)}</span>`:''}
       <span style="color:#9ca3af;font-size:18px">›</span>
     </div>
-    ${m.opmerkingen?`<div style="padding:8px 18px;font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;white-space:pre-wrap">${esc(m.opmerkingen)}</div>`:''}
+    ${(m.zegelHistorie||[]).length>0?`<div style="padding:6px 18px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6">🔒 ${(m.zegelHistorie||[]).length} vorige ${(m.zegelHistorie||[]).length===1?'zegel':'zegels'}</div>`:''}
+  ${m.opmerkingen?`<div style="padding:8px 18px;font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;white-space:pre-wrap">${esc(m.opmerkingen)}</div>`:''}
+  </div>`;
+}
+
+function fmtDatum(d){ if(!d) return ''; return new Date(d).toLocaleDateString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+
+function renderZegelHistorie(m){
+  const hist = [...(m.zegelHistorie||[])].reverse(); // nieuwste eerst
+  if(!hist.length && !m.zegelNummer) return '';
+  const rijen = hist.map((h,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f3f4f6;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:#111827;flex:1">${esc(h.zegel)}</span>
+      ${h.reden?`<span style="font-size:12px;color:#6b7280;flex:2">${esc(h.reden)}</span>`:''}
+      <span style="font-size:12px;color:#9ca3af;white-space:nowrap">${fmtDatum(h.datum)}</span>
+      <button onclick="verwijderZegelEntry(${hist.length-1-i})" style="background:none;border:none;cursor:pointer;color:#d1d5db;font-size:15px;padding:0 2px" title="Verwijder">✕</button>
+    </div>`).join('');
+  return `<div style="margin-bottom:20px">
+    <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Zegelhistorie</div>
+    <div style="background:#f9fafb;border-radius:10px;padding:4px 14px;border:1.5px solid #e5e7eb">
+      ${m.zegelNummer?`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;flex-wrap:wrap">
+        <span style="background:#dcfce7;color:#166534;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">Huidig</span>
+        <span style="font-size:13px;font-weight:800;color:#111827;flex:1">${esc(m.zegelNummer)}</span>
+      </div>`:''}
+      ${rijen||(!m.zegelNummer?'<div style="font-size:12px;color:#9ca3af;padding:10px 0">Nog geen zegelhistorie</div>':'')}
+    </div>
   </div>`;
 }
 
@@ -289,7 +316,7 @@ function renderForm(){
       </div>
       <div class="form-grid" style="margin-bottom:14px">
         <div class="field">
-          <label class="field-label">Zegelnummer</label>
+          <label class="field-label">${isNieuw?'Zegelnummer':'Huidig zegelnummer'}</label>
           <input class="inp" id="f-zegel" placeholder="bijv. Z-001" value="${esc(m.zegelNummer||'')}">
         </div>
         <div class="field">
@@ -308,6 +335,12 @@ function renderForm(){
         </div>
       </div>
 
+      ${!isNieuw ? renderZegelHistorie(m) : ''}
+
+      ${!isNieuw ? `<div style="margin-bottom:20px">
+        <button class="btn-outline" style="border-color:#2563eb;color:#2563eb" onclick="nieuweZegelModal()">🔒 Nieuwe zegel plaatsen</button>
+      </div>` : ''}
+
       <div id="fout-box" style="display:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600"></div>
 
       <div class="actions-row">
@@ -320,7 +353,7 @@ function renderForm(){
 
 // ── ACTIES ────────────────────────────────────────────────────────────────────
 function nieuwMotor(){
-  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:''};
+  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:'',zegelHistorie:[]};
   view='nieuw'; render();
 }
 function bewerkMotor(id){ huidig=motoren.find(m=>m.id===id)||null; if(!huidig) return; view='edit'; render(); }
@@ -363,6 +396,59 @@ function verwijderMotor(id){
       catch(e){ alert('Fout bij verwijderen: '+e.message); }
     }
   });
+}
+
+// ── ZEGEL MODAL ───────────────────────────────────────────────────────────────
+function nieuweZegelModal(){
+  const vandaag = new Date().toISOString().slice(0,10);
+  const el = document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px 28px 24px;box-shadow:0 8px 40px rgba(0,0,0,.18);max-width:380px;width:100%">
+    <div style="font-size:16px;font-weight:800;color:#111827;margin-bottom:4px">🔒 Nieuwe zegel plaatsen</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:18px">Motor ${esc(huidig?.motorNummer||'')} is open geweest. Vul het nieuwe zegelnummer in.</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Nieuw zegelnummer *</label>
+        <input id="nz-zegel" class="inp" placeholder="bijv. Z-002" style="width:100%"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Datum</label>
+        <input id="nz-datum" class="inp" type="date" value="${vandaag}" style="width:100%"></div>
+      <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Reden (optioneel)</label>
+        <input id="nz-reden" class="inp" placeholder="bijv. motor geopend voor revisie" style="width:100%"></div>
+    </div>
+    <div id="nz-fout" style="display:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:8px 12px;margin-top:12px;font-size:13px;font-weight:600"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn-blauw" id="nz-ok" style="flex:1">Bevestigen</button>
+      <button class="btn-outline" onclick="this.closest('div[style*=fixed]').remove()" style="flex:1">Annuleren</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+  el.querySelector('#nz-ok').onclick = async ()=>{
+    const nieuwZegel = el.querySelector('#nz-zegel').value.trim();
+    if(!nieuwZegel){
+      const f=el.querySelector('#nz-fout'); f.textContent='⚠️ Vul een zegelnummer in.'; f.style.display='block'; return;
+    }
+    const btn=el.querySelector('#nz-ok'); btn.disabled=true; btn.textContent='Opslaan…';
+    // Huidig zegel naar historie, nieuw zegel instellen
+    const oudeZegel = huidig.zegelNummer;
+    const hist = [...(huidig.zegelHistorie||[])];
+    if(oudeZegel) hist.push({zegel:oudeZegel, datum: el.querySelector('#nz-datum').value||vandaag, reden: el.querySelector('#nz-reden').value.trim()});
+    huidig.zegelNummer = nieuwZegel;
+    huidig.zegelHistorie = hist;
+    try{
+      await slaOpInDb(huidig);
+      el.remove();
+      render(); // herlaad formulier met bijgewerkte historie
+    }catch(e2){
+      const f=el.querySelector('#nz-fout'); f.textContent='⚠️ Fout: '+e2.message; f.style.display='block';
+      btn.disabled=false; btn.textContent='Bevestigen';
+    }
+  };
+}
+
+function verwijderZegelEntry(idx){
+  // idx is de positie in de originele (chronologische) array
+  huidig.zegelHistorie = (huidig.zegelHistorie||[]).filter((_,i)=>i!==idx);
+  render();
 }
 
 // ── CUSTOM CONFIRM ────────────────────────────────────────────────────────────
