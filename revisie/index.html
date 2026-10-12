@@ -557,13 +557,9 @@ function renderForm(){
     fMnEl.addEventListener('focus', toonMnDrop);
     fMnEl.addEventListener('click', toonMnDrop);
   }
-  if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten, klant=>{
-    // bij klant selectie: vul motornummer dropdown
-    if(fMnEl&&fMnDrop){
-      const motors=Object.entries(motorenCache).filter(([,d])=>d.klant.toLowerCase()===klant.toLowerCase()).map(([mn])=>mn).sort();
-      if(motors.length===1){ fMnEl.value=motors[0]; mnFill(motors[0]); }
-      else if(motors.length>1){ fMnEl.value=''; fMnEl.focus(); setTimeout(()=>fMnEl.dispatchEvent(new Event('input')),50); }
-    }
+  if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten, ()=>{
+    // bij klant selectie: focus naar motornummer en toon dropdown
+    if(fMnEl){ fMnEl.value=''; setTimeout(()=>{ fMnEl.focus(); toonMnDrop(); },50); }
   });
   acInline(document.getElementById('f-merk'), acMotorMerken);
   acInline(document.getElementById('f-type'), acMotorTypes);
