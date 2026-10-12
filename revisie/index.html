@@ -457,13 +457,13 @@ function renderForm(){
     <div class="form-card">
       <div class="form-section">
         <div class="form-grid">
-          <div class="field">
-            <label class="field-label">Motornummer *</label>
-            <input class="inp" id="f-mn" placeholder="bijv. 001" value="${esc(r.motorNummer||'')}" autocomplete="off">
-          </div>
           <div class="field ac-klant-wrap">
             <label class="field-label">Klantnaam</label>
             <input class="inp" id="f-kl" placeholder="bijv. DFK1" value="${esc(r.klant||'')}" autocomplete="off"><div class="ac-klant-drop" id="ac-f-kl-drop"></div>
+          </div>
+          <div class="field ac-klant-wrap">
+            <label class="field-label">Motornummer *</label>
+            <input class="inp" id="f-mn" placeholder="bijv. 001" value="${esc(r.motorNummer||'')}" autocomplete="off"><div class="ac-klant-drop" id="ac-f-mn-drop"></div>
           </div>
         </div>
         <div class="form-grid" style="margin-top:14px">
@@ -525,10 +525,32 @@ function renderForm(){
       </div>
     </div>`;
   renderOnderdelenLijst();
-  acInline(document.getElementById('f-mn'), acMotorNummers, mn=>mnFill(mn));
-  document.getElementById('f-mn').addEventListener('change', e=>mnFill(e.target.value.trim()));
+  const fMnEl=document.getElementById('f-mn'), fMnDrop=document.getElementById('ac-f-mn-drop');
   const fKlEl=document.getElementById('f-kl'), fKlDrop=document.getElementById('ac-f-kl-drop');
-  if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten);
+
+  function motorenVoorKlant(){
+    const kl=(fKlEl?.value||'').trim().toLowerCase();
+    const alle=Object.entries(motorenCache).filter(([,d])=>!kl||d.klant.toLowerCase()===kl).map(([mn])=>mn).sort();
+    // als filter geen resultaat geeft, toon alle
+    return alle.length ? alle : Object.keys(motorenCache).sort();
+  }
+
+  if(fMnEl&&fMnDrop){
+    acDropdown(fMnEl, fMnDrop, motorenVoorKlant, mn=>{ mnFill(mn); });
+    // toon dropdown bij focus als er een klant is
+    fMnEl.addEventListener('focus',()=>{
+      const kl=(fKlEl?.value||'').trim();
+      if(kl){ const items=motorenVoorKlant(); if(items.length&&!fMnEl.value) fMnEl.dispatchEvent(new Event('input')); }
+    });
+  }
+  if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten, klant=>{
+    // bij klant selectie: vul motornummer dropdown
+    if(fMnEl&&fMnDrop){
+      const motors=Object.entries(motorenCache).filter(([,d])=>d.klant.toLowerCase()===klant.toLowerCase()).map(([mn])=>mn).sort();
+      if(motors.length===1){ fMnEl.value=motors[0]; mnFill(motors[0]); }
+      else if(motors.length>1){ fMnEl.value=''; fMnEl.focus(); setTimeout(()=>fMnEl.dispatchEvent(new Event('input')),50); }
+    }
+  });
   acInline(document.getElementById('f-merk'), acMotorMerken);
   acInline(document.getElementById('f-type'), acMotorTypes);
   const ondInp = document.getElementById('f-ond-inp');
