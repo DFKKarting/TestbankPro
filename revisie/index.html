@@ -537,11 +537,25 @@ function renderForm(){
 
   if(fMnEl&&fMnDrop){
     acDropdown(fMnEl, fMnDrop, motorenVoorKlant, mn=>{ mnFill(mn); });
-    // toon dropdown bij focus als er een klant is
-    fMnEl.addEventListener('focus',()=>{
-      const kl=(fKlEl?.value||'').trim();
-      if(kl){ const items=motorenVoorKlant(); if(items.length&&!fMnEl.value) fMnEl.dispatchEvent(new Event('input')); }
-    });
+    // altijd lijst tonen bij focus/klik, ook als veld leeg is
+    function toonMnDrop(){
+      const items=motorenVoorKlant();
+      if(!items.length) return;
+      fMnDrop.innerHTML='';
+      let activeIdx=-1;
+      items.forEach((s,i)=>{
+        const d=document.createElement('div');
+        d.className='ac-klant-item'; d.textContent=s;
+        d.addEventListener('mousedown',e=>e.preventDefault());
+        d.addEventListener('touchstart',e=>e.preventDefault());
+        d.addEventListener('click',()=>{ fMnEl.value=s; fMnDrop.style.display='none'; mnFill(s); });
+        d.addEventListener('touchend',e=>{ e.preventDefault(); fMnEl.value=s; fMnDrop.style.display='none'; mnFill(s); });
+        fMnDrop.appendChild(d);
+      });
+      fMnDrop.style.display='block';
+    }
+    fMnEl.addEventListener('focus', toonMnDrop);
+    fMnEl.addEventListener('click', toonMnDrop);
   }
   if(fKlEl&&fKlDrop) acDropdown(fKlEl, fKlDrop, acKlanten, klant=>{
     // bij klant selectie: vul motornummer dropdown
