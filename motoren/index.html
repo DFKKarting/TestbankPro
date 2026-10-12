@@ -219,7 +219,8 @@ function acInline(el,key,onAccept){
     if(match.toLowerCase()===val.toLowerCase()){if(onAccept) onAccept(match);return;}
     const start=val.length;
     this.value=match;
-    this.setSelectionRange(start,match.length);
+    const _el=this,_s=start,_e=match.length;
+    requestAnimationFrame(()=>_el.setSelectionRange(_s,_e));
   });
   el.addEventListener('keydown',function(e){
     if((e.key==='Enter'||e.key==='Tab')&&this.selectionStart!==this.selectionEnd){

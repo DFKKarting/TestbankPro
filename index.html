@@ -473,7 +473,8 @@ function acInline(el,key,onAccept,wordMatch){
     if(!match) return;
     if(match.toLowerCase()===vl){ if(onAccept) onAccept(match); return; }
     this.value=match;
-    this.setSelectionRange(wordHit?0:val.length,match.length);
+    const _el=this,_s=wordHit?0:val.length,_e=match.length;
+    requestAnimationFrame(()=>_el.setSelectionRange(_s,_e));
   });
   el.addEventListener('keydown',function(e){
     if((e.key==='Enter'||e.key==='Tab')&&this.selectionStart!==this.selectionEnd){
@@ -1150,11 +1151,12 @@ function renderNieuw(){
 
     </div>
     ${(()=>{
-      const shots=ssGet('pending');
+      const fSid=sessieTimerSessieId||'pending';
+      const shots=ssGet(fSid);
       const thumbs=shots.map((ss,i)=>`
         <div style="position:relative;display:inline-block">
-          <img src="${ss.data}" onclick="ssOpen(null,${i},'pending')" style="height:100px;width:auto;border-radius:8px;border:1px solid #e5e7eb;cursor:zoom-in;display:block">
-          <button onclick="event.stopPropagation();ssConfirmDelete('pending',${i})" title="Verwijderen" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+          <img src="${ss.data}" onclick="ssOpen(null,${i},'${fSid}')" style="height:100px;width:auto;border-radius:8px;border:1px solid #e5e7eb;cursor:zoom-in;display:block">
+          <button onclick="event.stopPropagation();ssConfirmDelete('${fSid}',${i})" title="Verwijderen" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
         </div>`).join('');
       return `<div id="ss-wrapper" style="margin-bottom:18px">
         <div class="sec-label">Grafieken</div>
@@ -1162,7 +1164,7 @@ function renderNieuw(){
           <span>📋 Druk <strong>Ctrl+V</strong> om een afbeelding te plakken</span>
           <label style="cursor:pointer;padding:6px 14px;border-radius:7px;border:1.5px solid #d1d5db;background:#fff;font-size:12px;font-weight:600;color:#374151;white-space:nowrap">
             📁 Kies bestand
-            <input type="file" accept="image/*" style="display:none" onchange="if(this.files[0])ssAdd('pending',this.files[0]);this.value=''">
+            <input type="file" accept="image/*" style="display:none" onchange="if(this.files[0])ssAdd('${fSid}',this.files[0]);this.value=''">
           </label>
         </div>
         <div class="ss-thumbs" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">${thumbs}</div>
@@ -1527,7 +1529,7 @@ function ssOpen(dataUrl, idx, sid) {
 }
 // Globale paste-listener — werkt op detail- én nieuw-pagina
 document.addEventListener('paste', async function(e){
-  const sid = view==='detail'&&selected ? selected.id : view==='nieuw' ? 'pending' : null;
+  const sid = view==='detail'&&selected ? selected.id : view==='nieuw' ? (sessieTimerSessieId||'pending') : null;
   if(!sid) return;
   const feedback=()=>{const z=document.getElementById('ss-zone');if(z){z.style.borderColor='#2563eb';z.style.background='#eff6ff';setTimeout(()=>{z.style.borderColor='';z.style.background='';},600);}};
   // 1. items (screenshots, afbeeldingen gekopieerd vanuit browser/app)
@@ -1672,6 +1674,15 @@ function startSessie(){
   sessiePauzeStart=null;
   sessiePauzeeTotaal=0;
   cameFromMotoren=false;cameFromKlanten=false;sessionOriginMotorNr='';
+  // Maak meteen sessie aan in Supabase zodat screenshots direct worden opgeslagen (geen localStorage quota)
+  const nieuwId=uuid();
+  const placeholder={id:nieuwId,motorNummer:'',klant:'',carbu:'',motorMerk:'',motorType:'',motorNaam:'',
+    testType:'Test',uitkomst:'Geslaagd',opmerkingen:'',runs:[],duur:null,createdAt:new Date().toISOString()};
+  sessieTimerSessieId=nieuwId;
+  selected=placeholder;
+  sessies=[placeholder,...sessies];
+  localStorage.setItem('tbp_active_sessie',nieuwId);
+  dbSave(placeholder).catch(console.error);
   pendingRuns=[];ssPendingSave([]);navigeer('nieuw');
   sessieTimerInterval=setInterval(timerTick,1000);
 }

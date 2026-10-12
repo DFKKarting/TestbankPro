@@ -289,7 +289,9 @@ function acInline(el, getVals, onAccept, wordMatch){
       if(match) wordHit=true;
     }
     if(!match||match.toLowerCase()===vl){ if(match&&onAccept) onAccept(match); return; }
-    const sy=window.scrollY; this.value=match; this.setSelectionRange(wordHit?0:val.length,match.length); window.scrollTo(0,sy);
+    const sy=window.scrollY; this.value=match;
+    const _el=this,_s=wordHit?0:val.length,_e=match.length;
+    requestAnimationFrame(()=>{_el.setSelectionRange(_s,_e);window.scrollTo(0,sy);});
   });
   el.addEventListener('keydown', function(e){
     if((e.key==='Enter'||e.key==='Tab')&&this.selectionStart!==this.selectionEnd){
