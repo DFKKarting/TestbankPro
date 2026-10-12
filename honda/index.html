@@ -140,6 +140,7 @@ let motoren = [];
 let view = 'lijst';
 let huidig = null;
 let zoek = '';
+let huidigeGebruikerNaam = '';
 
 // ── DB HELPERS ────────────────────────────────────────────────────────────────
 function dbNaarJs(r){
@@ -152,7 +153,8 @@ function dbNaarJs(r){
     klant: r.klant||'',
     datumGebouwd: r.datum_gebouwd||'',
     opmerkingen: r.opmerkingen||'',
-    zegelHistorie: r.zegel_historie||[]
+    zegelHistorie: r.zegel_historie||[],
+    gemaaktDoor: r.gemaakt_door||''
   };
 }
 function jsNaarDb(m){
@@ -166,6 +168,7 @@ function jsNaarDb(m){
     datum_gebouwd: m.datumGebouwd||null,
     opmerkingen: m.opmerkingen||'',
     zegel_historie: m.zegelHistorie||[],
+    gemaakt_door: m.gemaaktDoor||'',
     updated_at: new Date().toISOString()
   };
 }
@@ -195,9 +198,24 @@ function render(){
   else renderForm();
 }
 
+function motorZoekTekst(m){
+  const historischeZegels = (m.zegelHistorie||[]).map(h=>h.zegel||'').join(' ');
+  return [m.motorNummer,m.klant,m.zegelNummer,m.gemaaktDoor,historischeZegels].join(' ').toLowerCase();
+}
+
+function sorteerOpDatum(lijst){
+  return [...lijst].sort((a,b)=>{
+    if(!a.datumGebouwd && !b.datumGebouwd) return 0;
+    if(!a.datumGebouwd) return 1;
+    if(!b.datumGebouwd) return -1;
+    return b.datumGebouwd.localeCompare(a.datumGebouwd);
+  });
+}
+
 function renderResultaten(){
-  const gefilterd = zoek.trim()
-    ? motoren.filter(m=>[m.motorNummer,m.klant,m.type,m.zegelNummer].join(' ').toLowerCase().includes(zoek.toLowerCase()))
+  const zl = zoek.trim().toLowerCase();
+  const gefilterd = zl
+    ? motoren.filter(m=>motorZoekTekst(m).includes(zl))
     : [...motoren];
 
   const groepen = {};
@@ -206,6 +224,8 @@ function renderResultaten(){
     if(!groepen[k]) groepen[k]=[];
     groepen[k].push(m);
   });
+  // Sorteer elke groep op fabricagedatum, nieuwste eerst
+  Object.keys(groepen).forEach(k=>{ groepen[k]=sorteerOpDatum(groepen[k]); });
 
   const leeg = motoren.length===0;
   const res = document.getElementById('motor-resultaten');
@@ -239,7 +259,7 @@ function renderLijst(){
         </div>
         <div class="zoek-wrap">
           <span class="zoek-icon">🔍</span>
-          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op nummer, klant, type…" value="${esc(zoek)}">
+          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op motornummer, klantnaam of zegelnummer…" value="${esc(zoek)}">
         </div>
         <button class="btn-blauw" onclick="nieuwMotor()">+ Nieuwe motor</button>
       </div>
@@ -260,6 +280,7 @@ function motorKaart(m){
       <div style="flex:1;min-width:0">
         <div class="motor-nr">${esc(m.motorNummer)}</div>
         ${m.klant?`<div class="motor-klant">${esc(m.klant)}</div>`:''}
+        ${m.gemaaktDoor?`<div style="font-size:11px;color:#9ca3af;margin-top:1px">👤 ${esc(m.gemaaktDoor)}</div>`:''}
       </div>
       ${m.zegelNummer?`<span class="zegel-val">Zegel: ${esc(m.zegelNummer)}</span>`:''}
       ${datum?`<span class="motor-datum">${esc(datum)}</span>`:''}
@@ -340,6 +361,10 @@ function renderForm(){
           <input class="inp" type="date" id="f-datum" value="${esc(m.datumGebouwd||'')}">
         </div>
         <div class="field">
+          <label class="field-label">Gemaakt door</label>
+          <input class="inp" id="f-door" value="${esc(m.gemaaktDoor||huidigeGebruikerNaam)}" ${!isNieuw?'readonly style="background:#f9fafb;color:#6b7280"':''} placeholder="${esc(huidigeGebruikerNaam)}">
+        </div>
+        <div class="field">
           <label class="field-label">Opmerkingen</label>
           <input class="inp" id="f-op" placeholder="Optionele notitie" value="${esc(m.opmerkingen||'')}">
         </div>
@@ -363,7 +388,7 @@ function renderForm(){
 
 // ── ACTIES ────────────────────────────────────────────────────────────────────
 function nieuwMotor(){
-  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',klasse:'',zegelNummer:'',klant:'',datumGebouwd:'',opmerkingen:'',zegelHistorie:[]};
+  huidig = {id:crypto.randomUUID(),motorNummer:'',type:'GX160',klasse:'',zegelNummer:'',klant:'',datumGebouwd:'',gemaaktDoor:huidigeGebruikerNaam,opmerkingen:'',zegelHistorie:[]};
   view='nieuw'; render();
 }
 function bewerkMotor(id){ huidig=motoren.find(m=>m.id===id)||null; if(!huidig) return; view='edit'; render(); }
@@ -383,7 +408,9 @@ async function slaOp(){
     zegelNummer:  document.getElementById('f-zegel').value.trim(),
     klant:        document.getElementById('f-klant').value.trim(),
     datumGebouwd: document.getElementById('f-datum').value||'',
+    gemaaktDoor:  document.getElementById('f-door').value.trim()||huidig.gemaaktDoor||'',
     opmerkingen:  document.getElementById('f-op').value.trim(),
+    zegelHistorie: huidig.zegelHistorie||[]
   };
   const btn = document.querySelector('.btn-blauw');
   if(btn){ btn.disabled=true; btn.textContent='Opslaan…'; }
@@ -500,7 +527,8 @@ async function init(){
     const rol=new Set((rd||[]).map(r=>r.rol));
     if(!rol.has('dfk-engines')&&!rol.has('admin')){window.location.href=rol.has('dfk-logistics')?'/dfk-logistics/':'/';return;}
     sb.from('profiles').select('naam').eq('email',session.user.email).single().then(({data:p})=>{
-      const el=document.getElementById('header-naam'); if(el) el.textContent=p?.naam||session.user.email.split('@')[0];
+      huidigeGebruikerNaam = p?.naam||session.user.email.split('@')[0];
+      const el=document.getElementById('header-naam'); if(el) el.textContent=huidigeGebruikerNaam;
     });
     if(rol.has('admin')){const _m=document.getElementById('nav-materiaal');if(_m)_m.style.display='';}
     if(rol.has('admin')){const _b=document.getElementById('nav-instellingen-wrap');if(_b)_b.style.display='';}
