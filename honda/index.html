@@ -141,6 +141,7 @@ let view = 'lijst';
 let huidig = null;
 let zoek = '';
 let huidigeGebruikerNaam = '';
+let sortering = 'datum'; // 'datum' | 'type'
 
 // ── DB HELPERS ────────────────────────────────────────────────────────────────
 function dbNaarJs(r){
@@ -218,20 +219,10 @@ function renderResultaten(){
     ? motoren.filter(m=>motorZoekTekst(m).includes(zl))
     : [...motoren];
 
-  const groepen = {};
-  gefilterd.forEach(m=>{
-    const k = m.type||'Onbekend';
-    if(!groepen[k]) groepen[k]=[];
-    groepen[k].push(m);
-  });
-  // Sorteer elke groep op fabricagedatum, nieuwste eerst
-  Object.keys(groepen).forEach(k=>{ groepen[k]=sorteerOpDatum(groepen[k]); });
-
-  const leeg = motoren.length===0;
   const res = document.getElementById('motor-resultaten');
   if(!res) return;
 
-  if(leeg){
+  if(motoren.length===0){
     res.innerHTML=`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">Nog geen Honda motoren</div><p style="font-size:13px;margin-top:6px">Voeg je eerste Honda motor toe.</p></div>`;
     return;
   }
@@ -240,14 +231,25 @@ function renderResultaten(){
     return;
   }
 
-  const typeVolgorde = ['GX160','GX200'];
-  const sleutels = [...new Set([...typeVolgorde, ...Object.keys(groepen)])].filter(k=>groepen[k]);
-
-  res.innerHTML = sleutels.map(groep=>`
-    <div class="sectie-label">${esc(groep)}</div>
-    ${groepen[groep].map(m=>motorKaart(m)).join('')}
-  `).join('');
+  if(sortering==='datum'){
+    const gesorteerd = sorteerOpDatum(gefilterd);
+    res.innerHTML = gesorteerd.map(m=>motorKaart(m)).join('');
+  } else {
+    const groepen = {};
+    gefilterd.forEach(m=>{ const k=m.type||'Onbekend'; if(!groepen[k]) groepen[k]=[]; groepen[k].push(m); });
+    Object.keys(groepen).forEach(k=>{ groepen[k]=sorteerOpDatum(groepen[k]); });
+    const sleutels = [...new Set(['GX160','GX200',...Object.keys(groepen)])].filter(k=>groepen[k]);
+    res.innerHTML = sleutels.map(groep=>`
+      <div class="sectie-label">${esc(groep)}</div>
+      ${groepen[groep].map(m=>motorKaart(m)).join('')}
+    `).join('');
+  }
 }
+
+function sortKnopStyle(actief){
+  return `padding:7px 12px;border-radius:7px;border:1.5px solid ${actief?'#cc0000':'#e5e7eb'};background:${actief?'#cc0000':'#fff'};color:${actief?'#fff':'#374151'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap`;
+}
+function setSortering(s){ sortering=s; renderLijst(); }
 
 function renderLijst(){
   if(!document.getElementById('motor-resultaten')){
@@ -261,11 +263,17 @@ function renderLijst(){
           <span class="zoek-icon">🔍</span>
           <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op motornummer, klantnaam of zegelnummer…" value="${esc(zoek)}">
         </div>
+        <div style="display:flex;gap:6px" id="sort-knoppen"></div>
         <button class="btn-blauw" onclick="nieuwMotor()">+ Nieuwe motor</button>
       </div>
       <div id="motor-resultaten"></div>`;
     document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; renderResultaten(); });
   }
+  // Update sorteerknopjes zonder de hele pagina opnieuw te bouwen
+  const sk = document.getElementById('sort-knoppen');
+  if(sk) sk.innerHTML=`
+    <button onclick="setSortering('datum')" style="${sortKnopStyle(sortering==='datum')}">📅 Datum</button>
+    <button onclick="setSortering('type')" style="${sortKnopStyle(sortering==='type')}">🔧 Type</button>`;
   renderResultaten();
 }
 
