@@ -2118,7 +2118,8 @@ async function generatePdf(s,best){
   doc.setFillColor(243,244,246);doc.rect(margin,y,col,7,'F');
   doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(107,114,128);
   let cx=margin+2;rC.forEach(c=>{doc.text(c.l,cx,y+5);cx+=c.w;});y+=7;
-  s.runs?.forEach((r,i)=>{chkY(10);
+  const gesorteerdeRuns=[...(s.runs||[])].sort((a,b)=>new Date(a.datum||0)-new Date(b.datum||0));
+  gesorteerdeRuns.forEach((r,i)=>{chkY(10);
     const isBest=best&&r.id===best.id;
     if(isBest){doc.setFillColor(239,246,255);doc.rect(margin,y,col,10,'F');}
     else if(i%2===0){doc.setFillColor(252,252,252);doc.rect(margin,y,col,10,'F');}
