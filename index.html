@@ -918,10 +918,12 @@ function runRowDetail(r,i,best,sessieCarbu){
     <td><span style="font-size:14px;font-weight:600;color:#111827">${r.koppel||'—'} <span style="font-size:11px;font-weight:400">Nm</span></span>${r.koppelRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.koppelRpm).toLocaleString()} rpm</span>`:''}</td>
     <td style="color:#374151">${r.toeren?Number(r.toeren).toLocaleString():'—'}</td>
     <td style="color:#6b7280;max-width:160px">
-      <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-        <span>${esc(r.opmerkingen||'')}</span>
-        <button onclick="bewerkRunOpmerking('${r.id}')" title="Opmerking aanpassen" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:0;flex-shrink:0;line-height:1">✏️</button>
-      </span>
+      ${r.opmerkingen
+        ? `<span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span>${esc(r.opmerkingen)}</span>
+            <button onclick="bewerkRunOpmerking('${r.id}')" title="Opmerking aanpassen" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:0;flex-shrink:0;line-height:1">✏️</button>
+           </span>`
+        : ''}
     </td>
     <td style="white-space:nowrap">
       <button data-star-run="${r.id}" onclick="toggleBestRun('${r.id}')" title="${sterTip}" style="padding:3px 9px;border-radius:6px;border:1.5px solid ${isManueel?'#fbbf24':'#d1d5db'};background:${isManueel?'#fffbeb':'#fff'};color:${isManueel?'#d97706':'#9ca3af'};font-size:13px;cursor:pointer;margin-right:4px">${isManueel?'★':'☆'}</button>
