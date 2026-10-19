@@ -917,7 +917,12 @@ function runRowDetail(r,i,best,sessieCarbu){
     <td><span style="font-size:14px;font-weight:${isBest?800:600};color:${isBest?'#2563eb':'#111827'}">${r.vermogen||'—'} <span style="font-size:11px;font-weight:400">HP</span></span>${r.vermogenRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.vermogenRpm).toLocaleString()} rpm</span>`:''}</td>
     <td><span style="font-size:14px;font-weight:600;color:#111827">${r.koppel||'—'} <span style="font-size:11px;font-weight:400">Nm</span></span>${r.koppelRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.koppelRpm).toLocaleString()} rpm</span>`:''}</td>
     <td style="color:#374151">${r.toeren?Number(r.toeren).toLocaleString():'—'}</td>
-    <td style="color:#6b7280">${esc(r.opmerkingen||'')}</td>
+    <td style="color:#6b7280;max-width:160px">
+      <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <span>${esc(r.opmerkingen||'')}</span>
+        <button onclick="bewerkRunOpmerking('${r.id}')" title="Opmerking aanpassen" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:0;flex-shrink:0;line-height:1">✏️</button>
+      </span>
+    </td>
     <td style="white-space:nowrap">
       <button data-star-run="${r.id}" onclick="toggleBestRun('${r.id}')" title="${sterTip}" style="padding:3px 9px;border-radius:6px;border:1.5px solid ${isManueel?'#fbbf24':'#d1d5db'};background:${isManueel?'#fffbeb':'#fff'};color:${isManueel?'#d97706':'#9ca3af'};font-size:13px;cursor:pointer;margin-right:4px">${isManueel?'★':'☆'}</button>
       <button onclick="verwijderRun('${r.id}')" style="padding:3px 10px;border-radius:6px;border:1.5px solid #fca5a5;background:#fff5f5;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer" title="Run verwijderen">✕</button>
@@ -1840,6 +1845,34 @@ function verwijderRun(runId){
       navigeer('detail',selected);
     }
   });
+}
+
+function bewerkRunOpmerking(runId){
+  if(!selected) return;
+  const run = selected.runs?.find(r=>r.id===runId);
+  if(!run) return;
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.18);max-width:400px;width:100%">
+    <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:14px">✏️ Opmerking run ${(selected.runs||[]).findIndex(r=>r.id===runId)+1}</div>
+    <textarea id="op-inp" rows="3" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#111827;resize:vertical">${esc(run.opmerkingen||'')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button id="op-ok" style="flex:1;background:#059669;border:none;color:#fff;border-radius:8px;padding:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Opslaan</button>
+      <button id="op-wis" style="background:#fff;border:1.5px solid #fca5a5;color:#ef4444;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Wissen</button>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#f3f4f6;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Annuleren</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+  const save=async(tekst)=>{
+    selected={...selected,runs:(selected.runs||[]).map(r=>r.id===runId?{...r,opmerkingen:tekst}:r)};
+    sessies=sessies.map(s=>s.id===selected.id?selected:s);
+    saveLocal(); dbSave(selected);
+    el.remove();
+    const scrollY=window.scrollY; renderDetail(); window.scrollTo({top:scrollY,behavior:'instant'});
+  };
+  el.querySelector('#op-ok').onclick=()=>save(el.querySelector('#op-inp').value.trim());
+  el.querySelector('#op-wis').onclick=()=>save('');
 }
 
 async function sessieVeldBijwerken(veld, waarde) {
