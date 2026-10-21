@@ -98,6 +98,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 
 /* Voorkom automatisch inzoomen op iOS bij focussen van invoervelden */
 @media(hover:none){select,input,textarea{font-size:max(16px,1em)!important}}
+/* Compacte header op mobiel (zelfde op alle pagina's) */
+@media(max-width:600px){
+  #header{padding:4px 12px 0;gap:0}
+  #header-top{height:46px}
+  .logo img{height:32px!important}
+  .logo-name{font-size:16px}
+  #nav-tabs{padding-bottom:4px}
+  .tab{padding:8px 12px}
+  #sub-tabs{padding:6px 0 8px}
+}
 </style>
 </head>
 <body>
