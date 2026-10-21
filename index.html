@@ -967,6 +967,65 @@ function runCardHtml(r,idx,total){
 }
 
 // ── RENDER VIEWS ──────────────────────────────────────────────────────────────
+function renderSessieLijstOnly(){
+  const container=document.getElementById('sessie-resultaten');
+  if(!container){renderLijst();return;}
+  const filtered=gefilterde();
+  // Update toggle button count
+  const tog=document.getElementById('sessie-toggle-tekst');
+  if(tog) tog.textContent=`📋 Bekijk eerdere tests${filtered.length?' ('+filtered.length+')':''}`;
+  let h='';
+  if(lijstOpen && !filtered.length){
+    const heeftSessies=sessies.length>0;
+    const heeftZoek=!!zoek;
+    const heeftFilter=filterType!=='Alle'||filterUitkomst!=='Alle';
+    let diagMsg='';
+    if(!heeftSessies) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">Totaal in geheugen: <b>0 sessies</b> — controleer Supabase-verbinding of vernieuw de pagina (Ctrl+Shift+R).</div>`;
+    else if(heeftZoek||heeftFilter) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig maar verborgen door actieve filter/zoekopdracht.</div>`;
+    else diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig. Ververs de pagina (Ctrl+Shift+R) als de sessies niet verschijnen.</div>`;
+    h=`<div class="empty-state"><div style="font-size:40px;margin-bottom:8px">🔍</div><div style="font-weight:600">Geen sessies gevonden</div>${diagMsg}</div>`;
+  } else if(lijstOpen){
+    filtered.forEach(s=>{
+      const best=bestRun(s.runs),eerste=s.runs?.[0];
+      const motorInfo=[s.motorMerk,s.motorType,s.motorNaam].filter(Boolean).join(' · ');
+      h+=`<div class="sessie-card">
+        <div class="sessie-head">
+          <div class="sessie-meta">
+            <div class="sessie-title-row">
+              ${s.klant?`<span class="sessie-motor">${esc(s.klant)}</span>`:''}
+              ${typeBadge(s.testType)}${badge(s.uitkomst)}
+              ${s.createdAt?`<span style="font-size:12px;color:#9ca3af;font-weight:600;margin-left:2px">${fmtDt(s.createdAt)}</span>`:eerste?.datum?`<span style="font-size:12px;color:#9ca3af;font-weight:600;margin-left:2px">${fmtDt(eerste.datum)}</span>`:''}
+            </div>
+            ${s.motorNummer?`<span class="sessie-klant">${esc(s.motorNummer)}</span>`:''}
+            ${(motorInfo||s.carbu)?`<div class="sessie-info">
+              ${motorInfo?`<span class="sessie-info-chip">🔧 ${esc(motorInfo)}</span>`:''}
+              ${effectiefCarbu(s)?`<span class="sessie-info-chip"><span class="info-lbl">Carbu</span>${esc(effectiefCarbu(s))}</span>`:''}
+            </div>`:''}
+          </div>
+          ${best?`<div class="sessie-stats">
+            <div class="stat-mini">
+              <div style="font-size:22px;font-weight:800;color:#2563eb;line-height:1">${best.vermogen||'—'}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">HP Best</div>
+              ${best.vermogenRpm?`<div style="font-size:10px;color:#bfdbfe">@ ${Number(best.vermogenRpm).toLocaleString()}</div>`:''}
+            </div>
+            <div class="stat-mini">
+              <div style="font-size:22px;font-weight:800;color:#111827;line-height:1">${best.koppel||'—'}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Nm Best</div>
+              ${best.koppelRpm?`<div style="font-size:10px;color:#d1d5db">@ ${Number(best.koppelRpm).toLocaleString()}</div>`:''}
+            </div>
+            <div class="stat-mini">
+              <div style="font-size:18px;font-weight:700;color:#374151;line-height:1">${s.runs?.length}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Runs</div>
+            </div>
+          </div>`:''}
+          <button class="btn-sm" data-action="bekijk" data-id="${s.id}" style="align-self:center">Bekijk →</button>
+        </div>
+      </div>`;
+    });
+  }
+  container.innerHTML=h;
+}
+
 function renderLijst(){
   const totRuns=sessies.reduce((s,t)=>s+(t.runs?.length||0),0);
   const filtered=gefilterde();
@@ -1009,63 +1068,16 @@ function renderLijst(){
   </div>`:'<input id="zinput" style="display:none">'}`;
   h+=`<div style="margin-bottom:12px">
     <button onclick="lijstOpen=!lijstOpen;saveViewState();renderLijst()" style="width:100%;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;padding:12px 18px;font-size:14px;font-weight:700;color:#374151;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <span>📋 Bekijk eerdere tests${filtered.length?' ('+filtered.length+')':''}</span>
+      <span id="sessie-toggle-tekst">📋 Bekijk eerdere tests${filtered.length?' ('+filtered.length+')':''}</span>
       <span style="font-size:12px;color:#9ca3af;transition:transform .2s;display:inline-block;transform:rotate(${lijstOpen?'180':'0'}deg)">▼</span>
     </button>
-  </div>`;
-  if(lijstOpen && !filtered.length){
-    const dbOk=document.querySelector('.db-status-ok, [style*="22c55e"]');
-    const heeftSessies=sessies.length>0;
-    const heeftZoek=!!zoek;
-    const heeftFilter=filterType!=='Alle'||filterUitkomst!=='Alle';
-    let diagMsg='';
-    if(!heeftSessies) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">Totaal in geheugen: <b>0 sessies</b> — controleer Supabase-verbinding of vernieuw de pagina (Ctrl+Shift+R).</div>`;
-    else if(heeftZoek||heeftFilter) diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig maar verborgen door actieve filter/zoekopdracht.</div>`;
-    else diagMsg=`<div style="font-size:12px;color:#6b7280;margin-top:6px">${sessies.length} sessie(s) aanwezig. Ververs de pagina (Ctrl+Shift+R) als de sessies niet verschijnen.</div>`;
-    h+=`<div class="empty-state"><div style="font-size:40px;margin-bottom:8px">🔍</div><div style="font-weight:600">Geen sessies gevonden</div>${diagMsg}</div>`;
-  } else if(lijstOpen) {
-    filtered.forEach(s=>{
-      const best=bestRun(s.runs), eerste=s.runs?.[0];
-      const motorInfo=[s.motorMerk,s.motorType,s.motorNaam].filter(Boolean).join(' · ');
-      h+=`<div class="sessie-card">
-        <div class="sessie-head">
-          <div class="sessie-meta">
-            <div class="sessie-title-row">
-              ${s.klant?`<span class="sessie-motor">${esc(s.klant)}</span>`:''}
-              ${typeBadge(s.testType)}${badge(s.uitkomst)}
-              ${s.createdAt?`<span style="font-size:12px;color:#9ca3af;font-weight:600;margin-left:2px">${fmtDt(s.createdAt)}</span>`:eerste?.datum?`<span style="font-size:12px;color:#9ca3af;font-weight:600;margin-left:2px">${fmtDt(eerste.datum)}</span>`:''}
-            </div>
-            ${s.motorNummer?`<span class="sessie-klant">${esc(s.motorNummer)}</span>`:''}
-            ${(motorInfo||s.carbu)?`<div class="sessie-info">
-              ${motorInfo?`<span class="sessie-info-chip">🔧 ${esc(motorInfo)}</span>`:''}
-              ${effectiefCarbu(s)?`<span class="sessie-info-chip"><span class="info-lbl">Carbu</span>${esc(effectiefCarbu(s))}</span>`:''}
-            </div>`:''}
-          </div>
-          ${best?`<div class="sessie-stats">
-            <div class="stat-mini">
-              <div style="font-size:22px;font-weight:800;color:#2563eb;line-height:1">${best.vermogen||'—'}</div>
-              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">HP Best</div>
-              ${best.vermogenRpm?`<div style="font-size:10px;color:#bfdbfe">@ ${Number(best.vermogenRpm).toLocaleString()}</div>`:''}
-            </div>
-            <div class="stat-mini">
-              <div style="font-size:22px;font-weight:800;color:#111827;line-height:1">${best.koppel||'—'}</div>
-              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Nm Best</div>
-              ${best.koppelRpm?`<div style="font-size:10px;color:#d1d5db">@ ${Number(best.koppelRpm).toLocaleString()}</div>`:''}
-            </div>
-            <div class="stat-mini">
-              <div style="font-size:18px;font-weight:700;color:#374151;line-height:1">${s.runs?.length}</div>
-              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Runs</div>
-            </div>
-          </div>`:''}
-          <button class="btn-sm" data-action="bekijk" data-id="${s.id}" style="align-self:center">Bekijk →</button>
-        </div>
-      </div>`;
-    });
-  }
+  </div>
+  <div id="sessie-resultaten"></div>`;
   document.getElementById('main').innerHTML=h;
-  document.getElementById('zinput')?.addEventListener('input',e=>{const pos=e.target.selectionStart;zoek=e.target.value;renderLijst();const inp=document.getElementById('zinput');if(inp){inp.focus();inp.setSelectionRange(pos,pos);}});
-  document.getElementById('ftype')?.addEventListener('change',e=>{filterType=e.target.value;renderLijst();});
-  document.getElementById('fuit')?.addEventListener('change',e=>{filterUitkomst=e.target.value;renderLijst();});
+  renderSessieLijstOnly();
+  document.getElementById('zinput')?.addEventListener('input',e=>{zoek=e.target.value;renderSessieLijstOnly();});
+  document.getElementById('ftype')?.addEventListener('change',e=>{filterType=e.target.value;renderSessieLijstOnly();});
+  document.getElementById('fuit')?.addEventListener('change',e=>{filterUitkomst=e.target.value;renderSessieLijstOnly();});
   document.getElementById('upzone').addEventListener('click',()=>document.getElementById('file-input').click());
 }
 
