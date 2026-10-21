@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
@@ -86,6 +86,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   #main{padding:12px 10px}
   .motor-card-inner{flex-wrap:wrap;gap:8px}
 }
+
+/* Voorkom automatisch inzoomen op iOS bij focussen van invoervelden */
+@media(hover:none){select,input,textarea{font-size:max(16px,1em)!important}}
 </style>
 </head>
 <body>

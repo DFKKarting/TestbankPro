@@ -104,6 +104,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .form-grid{grid-template-columns:1fr}
 }
+
+/* Voorkom automatisch inzoomen op iOS bij focussen van invoervelden */
+@media(hover:none){select,input,textarea{font-size:max(16px,1em)!important}}
 </style>
 </head>
 <body>

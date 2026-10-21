@@ -95,6 +95,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   .carbu-settings{grid-template-columns:1fr}
   .carbu-setting-blok:first-child{border-right:none;border-bottom:1px solid #f3f4f6}
 }
+
+/* Voorkom automatisch inzoomen op iOS bij focussen van invoervelden */
+@media(hover:none){select,input,textarea{font-size:max(16px,1em)!important}}
 </style>
 </head>
 <body>
