@@ -19,6 +19,7 @@
 body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;overflow-x:hidden}
 #header{background:#111827;color:#fff;padding:0 16px;display:flex;flex-direction:column;position:sticky;top:0;z-index:100}
 #header-top{display:flex;align-items:center;height:54px;gap:10px}
+#db-status{display:none!important}
 #nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;border-top:1px solid #1f2937}
 #nav-tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:none;color:#9ca3af;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s;flex-shrink:0;border-bottom:2px solid transparent;margin-bottom:-2px}
@@ -141,13 +142,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
     </div>
   </div>
   <nav id="nav-tabs">
-    <button class="tab" onclick="window.location.href='/'">Sessies</button>
+    <button class="tab" onclick="window.location.href='/'">Testbank</button>
     <button class="tab active" onclick="window.location.href='/motoren/'">Motoren</button>
     <button class="tab" onclick="window.location.href='/klanten/'">Klanten</button>
-    <button class="tab" onclick="window.location.href='/analyse/'">Analyse</button>
     <button class="tab" onclick="window.location.href='/carburators/'">Carburatoren</button>
     <button class="tab" onclick="window.location.href='/revisie/'">Revisies</button>
-        <button class="tab" onclick="window.location.href='/carbu-analyse/'">Carbu Optimalisatie</button>
     <button class="tab" onclick="window.location.href='/honda/'" style="margin-left:auto;border-left:1px solid #374151;padding-left:18px">Honda</button>
   </nav>
 </header>
