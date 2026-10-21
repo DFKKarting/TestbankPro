@@ -87,7 +87,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
 .opt-score{font-size:22px;font-weight:800;color:#059669;margin-left:auto}
 .opt-uitleg{font-size:12px;color:#6b7280;flex-basis:100%;margin-top:6px;line-height:1.5}
 .nav-wrap{position:relative;flex-shrink:0;order:1}
-.nav-toggle{background:#374151;border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;gap:7px;font-weight:700;font-family:inherit}
+.nav-toggle{background:#374151;border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;gap:7px;font-weight:700;font-family:inherit}
 .nav-toggle:hover{background:#4b5563}
 .nav-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#1f2937;border-radius:12px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;display:none;overflow:hidden;border:1px solid #374151}
 .nav-dropdown.open{display:block}
@@ -146,9 +146,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
           <span id="header-naam" style="font-size:13px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
           <span style="font-size:11px;opacity:.7">&#9660;</span>
         </button>
-        <div class="nav-dropdown" id="nav-dropdown">
+        <div class="nav-dropdown" id="nav-dropdown" style="right:0">
           <div id="nav-materiaal" style="display:none">
             <button class="nav-item" onclick="window.location.href='/dfk-logistics/'">DFK Logistics</button>
+            <div class="nav-divider"></div>
+          </div>
+          <div id="nav-instellingen-wrap" style="display:none">
+            <button class="nav-item" onclick="localStorage.setItem('mat_view','instellingen');window.location.href='/dfk-logistics/'">&#9881; Beheer</button>
             <div class="nav-divider"></div>
           </div>
           <div id="nav-sales-wrap" style="display:none">
@@ -1290,6 +1294,7 @@ async function init(){
   });
   if(rol.has('admin')){
     document.getElementById('nav-materiaal').style.display='';
+    document.getElementById('nav-instellingen-wrap').style.display='';
   }
   if(rol.has('admin')||rol.has('dfk-sales')){
     document.getElementById('nav-sales-wrap').style.display='';
