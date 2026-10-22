@@ -969,7 +969,7 @@ function runRowDetail(r,i,best,sessieCarbu){
     <td style="color:#9ca3af;font-weight:600">${i+1}</td>
     <td style="color:#374151;font-weight:700">${testNr(r.bestandsnaam)||'<span style="color:#9ca3af;font-style:italic;font-weight:400;font-size:11px">Geen testnummer</span>'}</td>
     <td style="white-space:nowrap;color:#374151">${fmtTime(r.datum)}</td>
-    <td style="white-space:nowrap">${carbuHtml}</td>
+    <td style="white-space:nowrap">${carbuHtml} <button onclick="bewerkRunCarbu('${r.id}')" title="Carbu van deze run aanpassen" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:0;line-height:1">✏️</button></td>
     <td><span style="font-size:14px;font-weight:${isBest?800:600};color:${isBest?'#2563eb':'#111827'}">${r.vermogen||'—'} <span style="font-size:11px;font-weight:400">HP</span></span>${r.vermogenRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.vermogenRpm).toLocaleString()} rpm</span>`:''}</td>
     <td><span style="font-size:14px;font-weight:600;color:#111827">${r.koppel||'—'} <span style="font-size:11px;font-weight:400">Nm</span></span>${r.koppelRpm?`<br><span style="font-size:11px;color:#9ca3af">@ ${Number(r.koppelRpm).toLocaleString()} rpm</span>`:''}</td>
     <td style="color:#374151">${r.toeren?Number(r.toeren).toLocaleString():'—'}</td>
@@ -1351,12 +1351,12 @@ function renderDetail(){
             :`<button onclick="herstarTimer()" style="margin-left:auto;background:none;border:1.5px solid #2563eb;color:#2563eb;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#9201; Timer herstarten</button>`}
         </div>
         <div class="meta-selects-row">
-          ${(selected.klant||effectiefCarbu(selected)||selected.motorMerk||selected.motorType||selected.motorNaam)?`<div class="detail-meta">
+          ${(selected.klant||effectiefCarbu(selected)||selected.motorMerk||selected.motorType||selected.motorNaam||(selected.runs||[]).length)?`<div class="detail-meta">
             ${selected.klant?`<div class="meta-row"><span class="meta-row-lbl">Klant</span><span class="meta-row-val klant">${esc(selected.klant)}</span></div>`:''}
             ${selected.motorMerk?`<div class="meta-row"><span class="meta-row-lbl">Motor merk</span><span class="meta-row-val">${esc(selected.motorMerk)}</span></div>`:''}
             ${selected.motorType?`<div class="meta-row"><span class="meta-row-lbl">Motor type</span><span class="meta-row-val">${esc(selected.motorType)}</span></div>`:''}
             ${selected.motorNaam?`<div class="meta-row"><span class="meta-row-lbl">Motor naam</span><span class="meta-row-val">${esc(selected.motorNaam)}</span></div>`:''}
-            ${effectiefCarbu(selected)?`<div class="meta-row"><span class="meta-row-lbl">Carburateur</span><span class="meta-row-val">${esc(effectiefCarbu(selected))}</span></div>`:''}
+            <div class="meta-row"><span class="meta-row-lbl">Carburateur</span><span class="meta-row-val">${effectiefCarbu(selected)?esc(effectiefCarbu(selected)):'<span style="color:#d1d5db">—</span>'} <button onclick="bewerkSessieCarbu()" title="Carbu van deze sessie aanpassen of wissen" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:0;line-height:1">✏️</button></span></div>
             ${selected.duur?`<div class="meta-row"><span class="meta-row-lbl">Sessieduur</span><span class="meta-row-val">⏱ ${fmtTimer(selected.duur)}</span></div>`:''}
           </div>`:''}
           <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding-top:2px;margin-left:auto">
@@ -1952,6 +1952,69 @@ function bewerkRunOpmerking(runId){
   };
   el.querySelector('#op-ok').onclick=()=>save(el.querySelector('#op-inp').value.trim());
   el.querySelector('#op-wis').onclick=()=>save('');
+}
+
+// ── CARBU ACHTERAF AANPASSEN ──────────────────────────────────────────────────
+// Suggesties: carbu's die al gebruikt zijn op hetzelfde motortype (zelfde naam op ander type = andere carbu)
+function carbuSuggesties(sessie){
+  const type = mkCarbuType(sessie.motorType || motorenCache[sessie.motorNummer]?.motorType);
+  const gebruik = mkCarbuGebruik(sessies, mn=>motorenCache[mn]?.motorType);
+  return [...new Set(Object.values(gebruik).filter(g=>g.type===type).map(g=>g.naam))].sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
+}
+function carbuModal({titel, uitleg, waarde, wisLabel, onSave}){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  el.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.18);max-width:420px;width:100%">
+    <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:6px">${titel}</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">${uitleg}</div>
+    <input id="cb-inp" list="cb-sugg" autocomplete="off" value="${esc(waarde||'')}" placeholder="Naam carburateur" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:16px;font-family:inherit;color:#111827">
+    <datalist id="cb-sugg">${carbuSuggesties(selected).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button id="cb-ok" style="flex:1;background:#059669;border:none;color:#fff;border-radius:8px;padding:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Opslaan</button>
+      <button id="cb-wis" style="background:#fff;border:1.5px solid #fca5a5;color:#ef4444;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">${wisLabel}</button>
+      <button id="cb-annuleer" style="background:#f3f4f6;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Annuleren</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+  el.querySelector('#cb-annuleer').onclick=()=>el.remove();
+  const klaar=async v=>{ await onSave(v); el.remove(); const y=window.scrollY; renderDetail(); window.scrollTo({top:y,behavior:'instant'}); };
+  el.querySelector('#cb-ok').onclick=()=>klaar(el.querySelector('#cb-inp').value.trim());
+  el.querySelector('#cb-wis').onclick=()=>klaar('');
+  setTimeout(()=>el.querySelector('#cb-inp').focus(),50);
+}
+async function bewaarSelected(){
+  sessies=sessies.map(s=>s.id===selected.id?selected:s);
+  saveLocal(); await dbSave(selected);
+}
+// Carbu van de hele sessie: runs die dezelfde (oude) carbu hadden, veranderen mee
+function bewerkSessieCarbu(){
+  if(!selected) return;
+  const oud=effectiefCarbu(selected);
+  carbuModal({
+    titel:'✏️ Carburateur van deze sessie',
+    uitleg:'Wordt aangepast voor de sessie en voor alle runs met deze carbu. "Wissen" haalt de carbu overal uit deze sessie.',
+    waarde:oud, wisLabel:'Wissen',
+    onSave:async v=>{
+      selected={...selected, carbu:v, runs:(selected.runs||[]).map(r=>(!v||!r.carbu||r.carbu===oud)?{...r,carbu:''}:r)};
+      await bewaarSelected();
+    }
+  });
+}
+// Carbu van één run; leeg = de carbu van de sessie gebruiken
+function bewerkRunCarbu(runId){
+  if(!selected) return;
+  const run=(selected.runs||[]).find(r=>r.id===runId); if(!run) return;
+  const nr=(selected.runs||[]).findIndex(r=>r.id===runId)+1;
+  carbuModal({
+    titel:`✏️ Carburateur run ${nr}`,
+    uitleg:selected.carbu?`Enkel voor deze run. "Sessie-carbu gebruiken" zet deze run terug op ${esc(selected.carbu)}.`:'Enkel voor deze run.',
+    waarde:run.carbu||selected.carbu||'', wisLabel:selected.carbu?'Sessie-carbu gebruiken':'Wissen',
+    onSave:async v=>{
+      selected={...selected, runs:selected.runs.map(r=>r.id===runId?{...r,carbu:(v===selected.carbu?'':v)}:r)};
+      await bewaarSelected();
+    }
+  });
 }
 
 async function sessieVeldBijwerken(veld, waarde) {

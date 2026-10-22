@@ -404,7 +404,7 @@ function verwijderCarbu(id){
   if(g && g.sessies.size && !andereZelfdeSleutel){
     customConfirm({
       titel:'Carburator is nog in gebruik',
-      tekst:`"${c.naam}" wordt gebruikt in ${g.sessies.size} sessie${g.sessies.size!==1?'s':''}${g.type?' ('+g.type+')':''}. Verwijderen kan pas als hij nergens meer gebruikt wordt — anders komt hij automatisch terug. Wil je hem samenvoegen met een andere carbu? Gebruik dan "Hernoem" in Carbu Optimalisatie en geef hem de naam van die andere carbu.`,
+      tekst:`"${c.naam}" wordt gebruikt in ${g.sessies.size} sessie${g.sessies.size!==1?'s':''}${g.type?' ('+g.type+')':''}. Verwijderen kan pas als hij nergens meer gebruikt wordt — anders komt hij automatisch terug. Pas de carbu aan in die sessie${g.sessies.size!==1?'s':''} (✏️ bij Carburateur), of voeg hem samen met een andere carbu via "Hernoem" in Carbu Optimalisatie.`,
       icoon:'⚠️',
       bevestig:'OK',
       bevestigKleur:'#2563eb',
