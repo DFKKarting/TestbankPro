@@ -353,10 +353,15 @@ function effectiefCarbu(sessie, run){
   return (run.carbu||'').trim() || (sessie.carbu||'').trim() || '';
 }
 
+// Carbu Optimalisatie is (voorlopig) enkel voor X30-motoren (X30, X30 Junior, X30 Senior — niet X30 Mini):
+// de scorezones zijn op X30-toerentallen afgestemd.
+const IS_X30 = t => ['x30','x30junior','x30senior'].includes(String(t||'').toLowerCase().replace(/[\s\-_.]/g,''));
+
 function verwerkCombinaties(){
   combinaties = {};
   sessies.forEach(sessie=>{
     if(!sessie.motorNummer) return;
+    if(!IS_X30(sessie.motorType || motorenCache[sessie.motorNummer]?.motor_type)) return;
     // X30-motor die als Junior of Senior getest wordt: per klasse apart vergelijken
     const basis = mkBasisType(sessie.motorType);
     const mn = basis && mkIsKlasseType(motorenCache[sessie.motorNummer]?.motor_type)
