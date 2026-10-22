@@ -412,23 +412,42 @@ function drukMotorenAf(){
   const dfk = motoren.filter(isDfk).sort(sortType);
   const klant = motoren.filter(m=>!isDfk(m)).sort((a,b)=>a.klant.localeCompare(b.klant,'nl')||sortType(a,b));
 
+  // Volgorde van merken en types zoals in de vaste lijst (motortypes.js), onbekende achteraan
+  const merkVolg = Object.keys(MOTOR_TYPES);
+  const volg = (lijst, v) => { const i = lijst.indexOf(v); return i < 0 ? 999 : i; };
+  const sortMerk = (a,b) => volg(merkVolg,a)-volg(merkVolg,b) || a.localeCompare(b,'nl');
+  const sortTypeVan = merk => (a,b) => volg(MOTOR_TYPES[merk]||[],a)-volg(MOTOR_TYPES[merk]||[],b) || a.localeCompare(b,'nl');
+  const sortMotor = toonKlant => (a,b) => (toonKlant ? a.klant.localeCompare(b.klant,'nl') : 0)
+    || natKey(a.motorNaam||'~').localeCompare(natKey(b.motorNaam||'~')) || natKey(a.motorNummer).localeCompare(natKey(b.motorNummer));
+
   const rij = (m, toonKlant) => `<tr>
-    <td>${esc2(m.motorNummer)}</td>
+    <td><strong>${esc2(m.motorNummer)}</strong></td>
     ${toonKlant?`<td>${esc2(m.klant)}</td>`:''}
-    <td>${esc2(m.motorMerk)}</td>
-    <td>${esc2(m.motorType)}</td>
-    <td>${esc2(m.motorNaam)}</td>
-    <td style="text-align:right;font-weight:700;color:#1d4ed8">${esc2(hpTekst(m))}</td>
-    <td style="text-align:right">${m.sessies.length}</td>
+    <td>${esc2(m.motorNaam)||'<span class="leeg">—</span>'}</td>
+    <td class="hp">${esc2(hpTekst(m))}</td>
+    <td>${m.sessies.length}</td>
   </tr>`;
 
+  // Per merk een blok, daarbinnen per type een tabel; alle tabellen hebben dezelfde, even brede kolommen
   const tabel = (lijst, toonKlant) => {
-    const groepen = {};
-    lijst.forEach(m=>{ const k=m.motorType||'(geen type)'; if(!groepen[k])groepen[k]=[]; groepen[k].push(m); });
-    const headers = `<thead><tr><th>Motornummer</th>${toonKlant?'<th>Klant</th>':''}<th>Merk</th><th>Type</th><th>Naam</th><th style="text-align:right">Best HP</th><th style="text-align:right">Sessies</th></tr></thead>`;
-    return Object.entries(groepen).map(([type, motors])=>`
-      <h3>${esc2(type)} <span>(${motors.length})</span></h3>
-      <table>${headers}<tbody>${motors.map(m=>rij(m,toonKlant)).join('')}</tbody></table>`).join('');
+    const perMerk = {};
+    lijst.forEach(m=>{
+      const merk=m.motorMerk||'Onbekend merk', type=m.motorType||'Onbekend type';
+      ((perMerk[merk]??={})[type]??=[]).push(m);
+    });
+    const headers = `<thead><tr><th>Motornummer</th>${toonKlant?'<th>Klant</th>':''}<th>Naam</th><th>Best HP</th><th>Sessies</th></tr></thead>`;
+    return Object.keys(perMerk).sort(sortMerk).map(merk=>{
+      const types = perMerk[merk];
+      const aantal = Object.values(types).reduce((n,l)=>n+l.length,0);
+      return `<div class="merk">
+        <div class="merk-kop">${esc2(merk)} <span>${aantal} motor${aantal!==1?'en':''}</span></div>
+        ${Object.keys(types).sort(sortTypeVan(merk)).map(type=>`
+          <div class="type-blok">
+            <h3>${esc2(type)} <span>(${types[type].length})</span></h3>
+            <table>${headers}<tbody>${types[type].sort(sortMotor(toonKlant)).map(m=>rij(m,toonKlant)).join('')}</tbody></table>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
   };
 
   const datum = new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'long',year:'numeric'});
@@ -436,15 +455,22 @@ function drukMotorenAf(){
   <title>Motorenlijst – DFK Engines</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px 32px}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:24px 32px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     h1{font-size:20px;font-weight:800;margin-bottom:4px}
     .sub{font-size:12px;color:#6b7280;margin-bottom:20px}
     h2{font-size:14px;font-weight:700;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #1d4ed8;color:#1d4ed8}
-    h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin:14px 0 4px}
-    h3 span{font-weight:400}
-    table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    .merk{margin-bottom:18px}
+    .merk-kop{background:#111827;color:#fff;font-size:14px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:7px 12px;border-radius:6px;margin:18px 0 6px;page-break-after:avoid}
+    .merk-kop span{font-size:11px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;margin-left:6px}
+    .type-blok{page-break-inside:avoid;margin-left:12px}
+    h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1d4ed8;margin:10px 0 4px;page-break-after:avoid}
+    h3 span{font-weight:400;color:#6b7280}
+    table{width:100%;border-collapse:collapse;margin-bottom:6px;table-layout:fixed}
     th{background:#f1f5f9;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border:1px solid #e2e8f0;text-align:left}
-    td{padding:6px 8px;border:1px solid #e2e8f0;vertical-align:middle}
+    td{padding:6px 8px;border:1px solid #e2e8f0;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    td.hp{font-weight:700;color:#1d4ed8}
+    .leeg{color:#cbd5e1}
+    tr{page-break-inside:avoid}
     tr:nth-child(even) td{background:#f8fafc}
     .footer{margin-top:24px;font-size:10px;color:#9ca3af;text-align:right}
     @media print{@page{margin:1.5cm}body{padding:0}}
