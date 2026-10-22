@@ -503,18 +503,6 @@ function renderMotorenResultaten(){
   const archiefGefilterd=archiefMotoren.filter(filterMotor);
   const tabActief=motorenTab;
   const tabStijl=t=>`padding:9px 20px;font-weight:700;font-size:14px;border:none;background:none;cursor:pointer;border-bottom:${tabActief===t?'2px solid #2563eb':'2px solid transparent'};color:${tabActief===t?'#2563eb':'#6b7280'};margin-bottom:-2px`;
-  const motorRij=(m,toonKlant)=>`<tr style="cursor:pointer" onclick="openMotorDetail('${esc(m.motorNummer)}')">
-    <td style="font-weight:700;color:#1d4ed8">${esc(m.motorNummer)}</td>
-    ${toonKlant?`<td>${esc(m.klant)}</td>`:''}
-    <td>${esc(m.motorMerk)}</td><td>${esc(m.motorType)}</td><td>${esc(m.motorNaam)}</td>
-    <td style="font-weight:700;color:#2563eb">${m.bestHP?`${m.bestHP} HP`:'—'}</td>
-    <td style="color:#374151">${m.sessies.length}</td>
-    <td style="color:#6b7280">${m.lastDatum?fmtDt(m.lastDatum):'—'}</td></tr>`;
-  const motorTabel=(lijst,toonKlant)=>{
-    if(!lijst.length)return`<div style="color:#9ca3af;font-size:13px;padding:12px 0">Geen motoren.</div>`;
-    const headers=toonKlant?['Motornummer','Klant','Merk','Type','Naam','Best HP','Sessies','Laatste test']:['Motornummer','Merk','Type','Naam','Best HP','Sessies','Laatste test'];
-    return`<div class="tbl-border"><div class="tbl-scroll"><table class="tbl"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${lijst.map(m=>motorRij(m,toonKlant)).join('')}</tbody></table></div></div>`;
-  };
   const statusBadgeMotor=s=>s==='Verkocht'
     ?`<span style="background:#fee2e2;color:#991b1b;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">Verkocht</span>`
     :`<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700">Non-actief</span>`;
@@ -522,13 +510,15 @@ function renderMotorenResultaten(){
     if(!lijst.length)return`<div style="color:#9ca3af;font-size:13px;padding:12px 0">Geen gearchiveerde motoren.</div>`;
     return`<div class="tbl-border"><div class="tbl-scroll"><table class="tbl"><thead><tr>${['Motornummer','Klant','Merk / Type','Naam','Status','Best HP','Sessies'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${lijst.map(m=>`<tr style="cursor:pointer;opacity:.75" onclick="openMotorDetail('${esc(m.motorNummer)}')"><td style="font-weight:700;color:#6b7280">${esc(m.motorNummer)}</td><td>${esc(m.klant)}</td><td style="color:#6b7280">${esc([m.motorMerk,m.motorType].filter(Boolean).join(' · '))}</td><td>${esc(m.motorNaam)}</td><td>${statusBadgeMotor(m.status)}</td><td style="font-weight:700;color:#2563eb">${m.bestHP?`${m.bestHP} HP`:'—'}</td><td style="color:#374151">${m.sessies.length}</td></tr>`).join('')}</tbody></table></div></div>`;
   };
-  const motorTabelDfk=lijst=>{
+  const motorTabelGroep=(lijst,toonKlant)=>{
     if(!lijst.length)return`<div style="color:#9ca3af;font-size:13px;padding:12px 0">Geen motoren.</div>`;
     const groepMap={};
     lijst.forEach(m=>{const key=[m.motorMerk,m.motorType].filter(Boolean).join(' · ')||'(onbekend type)';if(!groepMap[key])groepMap[key]=[];groepMap[key].push(m);});
-    return Object.entries(groepMap).sort(([a],[b])=>natKey(a).localeCompare(natKey(b))).map(([groepNaam,motors])=>{
-      const ingeklapt=!dfkIngeklapt.has(groepNaam);
-      const safeKey=groepNaam.replace(/'/g,"\\'");
+    const onb='(onbekend type)';
+    return Object.entries(groepMap).sort(([a],[b])=>(a===onb)-(b===onb)||natKey(a).localeCompare(natKey(b))).map(([groepNaam,motors])=>{
+      const stateKey=(toonKlant?'klant:':'')+groepNaam;
+      const ingeklapt=!dfkIngeklapt.has(stateKey);
+      const safeKey=stateKey.replace(/'/g,"\\'");
       return`<div style="margin-bottom:12px">
         <div onclick="dfkGroepToggle('${safeKey}')" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:${ingeklapt?'10px':'10px 10px 0 0'}">
           <div style="display:flex;align-items:center;gap:10px">
@@ -539,9 +529,9 @@ function renderMotorenResultaten(){
           <span style="font-size:14px;color:#9ca3af;display:inline-block;transform:rotate(${ingeklapt?'0':'180'}deg)">▼</span>
         </div>
         ${ingeklapt?'':`<div class="tbl-border" style="border-top:none;border-radius:0 0 10px 10px"><div class="tbl-scroll"><table class="tbl">
-          <thead><tr>${['Motornummer','Naam','Best HP','Beste carbu','Sessies','Laatste test'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+          <thead><tr>${(toonKlant?['Motornummer','Klant','Naam','Best HP','Beste carbu','Sessies','Laatste test']:['Motornummer','Naam','Best HP','Beste carbu','Sessies','Laatste test']).map(h=>`<th>${h}</th>`).join('')}</tr></thead>
           <tbody>${motors.map(m=>`<tr style="cursor:pointer" onclick="openMotorDetail('${esc(m.motorNummer)}')">
-            <td style="font-weight:700;color:#1d4ed8">${esc(m.motorNummer)}</td><td>${esc(m.motorNaam)}</td>
+            <td style="font-weight:700;color:#1d4ed8">${esc(m.motorNummer)}</td>${toonKlant?`<td>${esc(m.klant)}</td>`:''}<td>${esc(m.motorNaam)}</td>
             <td style="font-weight:700;color:#2563eb">${m.bestHP?`${m.bestHP} HP`:'—'}</td>
             <td style="color:#374151;font-weight:600">${esc(m.bestCarbu||'—')}</td>
             <td style="color:#374151">${m.sessies.length}</td>
@@ -563,7 +553,7 @@ function renderMotorenResultaten(){
         ?(archiefGefilterd.length?motorTabelArchief(archiefGefilterd):`<div class="empty-state" style="padding:32px"><div style="font-size:32px;margin-bottom:8px">&#x1F4E6;</div><div style="font-weight:600">Geen gearchiveerde motoren</div></div>`)
         :zoekStr&&!dfkGefilterd.length&&!klantGefilterd.length
           ?`<div class="empty-state" style="padding:32px"><div style="font-size:32px;margin-bottom:8px">&#x1F50D;</div><div style="font-weight:600">Geen resultaten voor "${esc(motorenZoek)}"</div></div>`
-          :tabActief==='dfk'?motorTabelDfk(dfkGefilterd):motorTabel(klantGefilterd,true)
+          :tabActief==='dfk'?motorTabelGroep(dfkGefilterd,false):motorTabelGroep(klantGefilterd,true)
       }`;
 }
 function renderMotoren(){
