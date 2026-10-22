@@ -513,12 +513,23 @@ function acInline(el,key,onAccept,wordMatch){
     }
   });
 }
+let mnLaatstIngevuld=null; // naam die mnMapFill het laatst automatisch invulde
 function mnMapFill(mn){
-  const d=motorenCache[mn]; if(!d) return;
-  // Gekende motor: merk, type en naam altijd overnemen (ook bij wisselen van motornummer); klant enkel als de motor er een heeft
   const sv=(id,v)=>{ const el=document.getElementById('sf-'+id); if(el) el.value=v||''; };
+  // Gegevens uit de motorentabel, anders uit de laatste sessie van deze motor
+  const s=sessies.find(x=>x.motorNummer===mn);
+  const d=motorenCache[mn]||(s&&{klant:s.klant,motorMerk:s.motorMerk,motorType:s.motorType,motorNaam:s.motorNaam});
+  if(!d){
+    // Nieuw motornummer: automatisch ingevulde naam van de vorige motor wissen
+    const naamEl=document.getElementById('sf-mn2');
+    if(mn&&naamEl&&mnLaatstIngevuld!==null&&naamEl.value===mnLaatstIngevuld) naamEl.value='';
+    mnLaatstIngevuld=null;
+    return;
+  }
+  // Gekende motor: merk, type en naam altijd overnemen (ook bij wisselen van motornummer); klant enkel als de motor er een heeft
   if(d.klant) sv('kl',d.klant);
   sv('mm',d.motorMerk); sv('mt',d.motorType); sv('mn2',d.motorNaam);
+  mnLaatstIngevuld=d.motorNaam||'';
   const mt=document.getElementById('sf-mt')?.value.trim(); if(mt) carbuDefaultFill(mt);
 }
 
