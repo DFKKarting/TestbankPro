@@ -515,7 +515,10 @@ function acInline(el,key,onAccept,wordMatch){
 }
 function mnMapFill(mn){
   const d=motorenCache[mn]; if(!d) return;
-  ['kl','mm','mt','mn2'].forEach(id=>{ const el=document.getElementById('sf-'+id); if(el&&!el.value){ const key={kl:'klant',mm:'motorMerk',mt:'motorType',mn2:'motorNaam'}[id]; if(d[key]) el.value=d[key]; } });
+  // Gekende motor: merk, type en naam altijd overnemen (ook bij wisselen van motornummer); klant enkel als de motor er een heeft
+  const sv=(id,v)=>{ const el=document.getElementById('sf-'+id); if(el) el.value=v||''; };
+  if(d.klant) sv('kl',d.klant);
+  sv('mm',d.motorMerk); sv('mt',d.motorType); sv('mn2',d.motorNaam);
   const mt=document.getElementById('sf-mt')?.value.trim(); if(mt) carbuDefaultFill(mt);
 }
 
