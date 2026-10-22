@@ -578,7 +578,7 @@ function renderForm(){
   });
   acInline(document.getElementById('f-merk'), acMotorMerken);
   acInline(document.getElementById('f-type'), acMotorTypes);
-  motorKeuze('f-merk','f-type');
+  motorKeuze('f-merk','f-type',{klantId:'f-kl'});
   const ondInp = document.getElementById('f-ond-inp');
   const ondDd  = document.getElementById('f-ond-dd');
   function sluitOndDd(){ ondDd.style.display='none'; ondDd.innerHTML=''; }

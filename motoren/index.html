@@ -739,7 +739,7 @@ function toggleMotorEdit(){
   const form=document.getElementById('motor-edit-form');if(!form)return;
   const isOpen=form.style.display!=='none';
   form.style.display=isOpen?'none':'block';
-  if(!isOpen)motorKeuze('me-merk','me-type');
+  if(!isOpen)motorKeuze('me-merk','me-type',{klantId:'me-klant'});
   if(!isOpen){const el=document.getElementById('me-klant');if(el)el.focus();}
 }
 async function motorEditSave(){
@@ -794,7 +794,7 @@ function renderMotorNieuw(){
   acInline(document.getElementById('mn-klant'),'klant');
   acInline(document.getElementById('mn-merk'),'motorMerk');
   acInline(document.getElementById('mn-type'),'motorType');
-  motorKeuze('mn-merk','mn-type');
+  motorKeuze('mn-merk','mn-type',{klantId:'mn-klant'});
   acInline(document.getElementById('mn-naam'),'motorNaam');
 }
 async function saveMotorNieuw(){

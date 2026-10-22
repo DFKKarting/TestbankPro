@@ -24,6 +24,7 @@ const mkIsKlasseType = v => Object.keys(MOTOR_KLASSEN).some(b => mkNorm(b) === m
 // De originele inputs blijven bestaan (verborgen) en bevatten altijd de gekozen waarde,
 // dus bestaande code die .value leest of zet blijft gewoon werken.
 // opts.sessie: sessieformulier — een type met klassen (X30) moet als Junior/Senior gekozen worden.
+// opts.klantId: motorformulier — type X30 enkel voor DFK-motoren; klantmotoren kiezen Junior/Senior.
 function motorKeuze(merkId, typeId, opts = {}) {
   const merkInp = document.getElementById(merkId);
   const typeInp = document.getElementById(typeId);
@@ -48,6 +49,9 @@ function motorKeuze(merkId, typeId, opts = {}) {
   const hint = document.createElement('div');
   hint.style.cssText = 'display:none;font-size:12px;font-weight:600;color:#b45309;margin-top:4px';
   typeInp.parentNode.insertBefore(hint, typeInp.nextSibling);
+  const klantInp = opts.klantId ? document.getElementById(opts.klantId) : null;
+  const isDfkKlant = v => !String(v || '').trim() || String(v).trim().toLowerCase() === 'dfk';
+  const verbergKlasseTypes = () => !!opts.sessie || (!!klantInp && !isDfkKlant(klantInp.value));
   merkInp.placeholder = 'Ander merk…';
   typeInp.placeholder = 'Ander type…';
 
@@ -69,12 +73,12 @@ function motorKeuze(merkId, typeId, opts = {}) {
     if (merk) {
       typeSel.style.display = '';
       typeSel.disabled = false;
-      const lijst = opts.sessie ? MOTOR_TYPES[merk].filter(t => !mkIsKlasseType(t)) : MOTOR_TYPES[merk];
+      const lijst = verbergKlasseTypes() ? MOTOR_TYPES[merk].filter(t => !mkIsKlasseType(t)) : MOTOR_TYPES[merk];
       typeSel.innerHTML = opties(lijst, 'Kies type');
-      const klasseNodig = opts.sessie && mkIsKlasseType(tv);
-      if (klasseNodig) setV(typeInp, '');
+      const klasseNodig = verbergKlasseTypes() && mkIsKlasseType(tv);
+      // klasseNodig: waarde (bv. 'X30') blijft staan tot er gekozen wordt, zodat opslaan niets wist
       const klassen = klasseNodig ? MOTOR_KLASSEN[Object.keys(MOTOR_KLASSEN).find(k => mkNorm(k) === mkNorm(tv))] : [];
-      hint.textContent = klasseNodig ? `Kies ${klassen.map(k => k.slice(tv.length).trim() || k).join(' of ')} voor deze test` : '';
+      hint.textContent = klasseNodig ? `Kies ${klassen.map(k => k.slice(tv.length).trim() || k).join(' of ')}${opts.sessie ? ' voor deze test' : ` (${tv} is enkel voor DFK-motoren)`}` : '';
       hint.style.display = klasseNodig ? '' : 'none';
       typeSel.style.borderColor = klasseNodig ? '#f59e0b' : '';
       const type = klasseNodig ? null : lijst.find(t => mkNorm(t) === mkNorm(tv));
@@ -124,5 +128,7 @@ function motorKeuze(merkId, typeId, opts = {}) {
   [merkInp, typeInp].forEach(inp => inp.addEventListener('blur', () => {
     if (mkZoekMerk(getV(merkInp)) || mkZoekType(mkZoekMerk(getV(merkInp)), getV(typeInp))) { anderMerk = anderType = false; sync(); }
   }));
+  // Klant gewijzigd: lijst met types opnieuw opbouwen (X30 enkel bij DFK)
+  if (klantInp) ['input', 'change'].forEach(ev => klantInp.addEventListener(ev, () => sync()));
   sync();
 }
