@@ -426,7 +426,6 @@ function drukMotorenAf(){
     ${toonKlant?`<td>${esc2(m.klant)}</td>`:''}
     <td>${esc2(m.motorNaam)||'<span class="leeg">—</span>'}</td>
     <td class="hp">${esc2(hpTekst(m))}</td>
-    <td>${m.sessies.length}</td>
   </tr>`;
 
   // Per merk een blok, daarbinnen per type een tabel; alle tabellen hebben dezelfde, even brede kolommen
@@ -436,7 +435,7 @@ function drukMotorenAf(){
       const merk=m.motorMerk||'Onbekend merk', type=m.motorType||'Onbekend type';
       ((perMerk[merk]??={})[type]??=[]).push(m);
     });
-    const headers = `<thead><tr><th>Motornummer</th>${toonKlant?'<th>Klant</th>':''}<th>Naam</th><th>Best HP</th><th>Sessies</th></tr></thead>`;
+    const headers = `<thead><tr><th>Motornummer</th>${toonKlant?'<th>Klant</th>':''}<th>Naam</th><th>Best HP</th></tr></thead>`;
     return Object.keys(perMerk).sort(sortMerk).map(merk=>{
       const types = perMerk[merk];
       const aantal = Object.values(types).reduce((n,l)=>n+l.length,0);
