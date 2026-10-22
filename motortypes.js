@@ -3,6 +3,7 @@
 const MOTOR_TYPES = {
   'Honda': ['Cadet', 'Junior', 'Senior'],
   'IAME':  ['X30 Mini', 'X30 Junior', 'X30 Senior', 'Super Shifter'],
+  'TM':    ['KZ'],
 };
 
 const MK_ANDER = '__ander__';
@@ -38,10 +39,10 @@ function motorKeuze(merkId, typeId) {
   typeInp.placeholder = 'Ander type…';
 
   const opties = (lijst, leeg) =>
-    `<option value="">${leeg}</option>` +
+    `<option value="" disabled hidden>${leeg}</option>` +
     lijst.map(x => `<option value="${x.replace(/"/g, '&quot;')}">${x}</option>`).join('') +
     `<option value="${MK_ANDER}">Ander…</option>`;
-  merkSel.innerHTML = opties(Object.keys(MOTOR_TYPES), '— Kies merk —');
+  merkSel.innerHTML = opties(Object.keys(MOTOR_TYPES), 'Kies merk');
   let anderMerk = false, anderType = false; // gebruiker koos zelf "Ander…"
 
   // Zet de keuzelijsten op basis van de huidige waarden in de inputs
@@ -55,7 +56,7 @@ function motorKeuze(merkId, typeId) {
     if (merk) {
       typeSel.style.display = '';
       typeSel.disabled = false;
-      typeSel.innerHTML = opties(MOTOR_TYPES[merk], '— Kies type —');
+      typeSel.innerHTML = opties(MOTOR_TYPES[merk], 'Kies type');
       const type = mkZoekType(merk, tv);
       if (type) { typeSel.value = type; if (tv !== type) setV(typeInp, type); }
       else typeSel.value = (tv || anderType) ? MK_ANDER : '';
