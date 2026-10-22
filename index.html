@@ -576,6 +576,15 @@ async function dbMotorenLoad(){
   saveMotorenLocal();
   updateSyncIndicator();
 }
+// Type dat bij de motor zelf bewaard wordt. Een DFK-motor die als X30 Junior/Senior getest wordt
+// blijft type 'X30' (de klasse hoort bij de sessie). Leeg type overschrijft het bestaande niet.
+function motorTypeVoorMotor(mn,klant,sessieType){
+  const huidig=motorenCache[mn]?.motorType||'';
+  const isDfk=!klant||klant.toLowerCase()==='dfk';
+  const basis=mkBasisType(sessieType);
+  if(basis&&(isDfk||mkIsKlasseType(huidig))) return basis;
+  return sessieType||huidig;
+}
 async function dbMotorSave(mn,d){
   if(!mn) return;
   motorenCache[mn]=d;
@@ -1252,7 +1261,7 @@ function renderNieuw(){
     });
   }
   [['sf-mm','motorMerk'],['sf-mt','motorType'],['sf-mn2','motorNaam'],['sf-ca','carbu']].forEach(([id,key])=>acInline(document.getElementById(id),key));
-  motorKeuze('sf-mm','sf-mt');
+  motorKeuze('sf-mm','sf-mt',{sessie:true});
   document.getElementById('sf-mn').addEventListener('change', e=>mnMapFill(e.target.value.trim()));
   document.getElementById('sf-mt').addEventListener('change', e=>carbuDefaultFill(e.target.value.trim()));
   document.getElementById('sf-mt').addEventListener('blur',   e=>carbuDefaultFill(e.target.value.trim()));
@@ -1938,7 +1947,9 @@ async function runsOpslaan(){
   const motorType=document.getElementById('sf-mt').value.trim();
   const motorNaam=document.getElementById('sf-mn2').value.trim();
   const g=id=>(document.getElementById(id)?.value||'').trim();
-  dbMotorSave(mn,{klant,motorMerk,motorType,motorNaam});
+  const motorTypeMotor=motorTypeVoorMotor(mn,klant,motorType);
+  if(mkIsKlasseType(motorTypeMotor)&&!mkBasisType(motorType)){const msg='⚠️ Kies bij motortype of deze test '+MOTOR_KLASSEN[motorTypeMotor].join(' of ')+' is.';['fout-box','fout-box-top'].forEach(id=>{const b=document.getElementById(id);if(b){b.textContent=msg;b.style.display='block';}});return;}
+  dbMotorSave(mn,{klant,motorMerk,motorType:motorTypeMotor,motorNaam});
   if(!sessieTimerSessieId){
     // Eerste keer: maak sessie aan
     const nieuw={
@@ -1989,7 +2000,9 @@ async function opslaan(){
   const motorType=document.getElementById('sf-mt').value.trim();
   const motorNaam=document.getElementById('sf-mn2').value.trim();
   const g=id=>(document.getElementById(id)?.value||'').trim();
-  dbMotorSave(mn,{klant,motorMerk,motorType,motorNaam});
+  const motorTypeMotor=motorTypeVoorMotor(mn,klant,motorType);
+  if(mkIsKlasseType(motorTypeMotor)&&!mkBasisType(motorType)){const msg='⚠️ Kies bij motortype of deze test '+MOTOR_KLASSEN[motorTypeMotor].join(' of ')+' is.';['fout-box','fout-box-top'].forEach(id=>{const b=document.getElementById(id);if(b){b.textContent=msg;b.style.display='block';}});return;}
+  dbMotorSave(mn,{klant,motorMerk,motorType:motorTypeMotor,motorNaam});
   const duur=sessieStartTijd?Math.round(timerElapsed()/1000):null;
   stopSessieTimer(); sessieStartTijd=null;
   let doelSessie;

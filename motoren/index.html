@@ -418,7 +418,7 @@ function drukMotorenAf(){
     <td>${esc2(m.motorMerk)}</td>
     <td>${esc2(m.motorType)}</td>
     <td>${esc2(m.motorNaam)}</td>
-    <td style="text-align:right;font-weight:700;color:#1d4ed8">${m.bestHP?m.bestHP+' HP':'—'}</td>
+    <td style="text-align:right;font-weight:700;color:#1d4ed8">${esc2(hpTekst(m))}</td>
     <td style="text-align:right">${m.sessies.length}</td>
   </tr>`;
 
@@ -465,6 +465,22 @@ function drukMotorenAf(){
   w.document.close();
 }
 
+// Beste HP per sessieklasse (bv. X30 Junior / X30 Senior) voor motoren met type X30
+function bestPerKlasse(lijst){
+  const res={};
+  lijst.forEach(s=>{
+    if(!mkBasisType(s.motorType))return;
+    const v=parseFloat(bestRun(s.runs)?.vermogen);
+    if(v&&(!res[s.motorType]||v>res[s.motorType]))res[s.motorType]=v;
+  });
+  return res;
+}
+const klasseKort=k=>{const b=mkBasisType(k);return b?k.slice(b.length).trim():k;};
+const klasseTekst=r=>Object.entries(r).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${klasseKort(k)} ${v} HP`).join(' · ');
+function hpTekst(m){
+  if(mkIsKlasseType(m.motorType)){const t=klasseTekst(bestPerKlasse(m.sessies));if(t)return t;}
+  return m.bestHP?`${m.bestHP} HP`:'—';
+}
 function berekeenMotorenData(){
   const map={};
   Object.entries(motorenCache).forEach(([mn,saved])=>{
@@ -525,7 +541,9 @@ function renderMotorenResultaten(){
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font-size:13px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.6px">${esc(groepNaam)}</span>
             <span style="font-weight:500;color:#9ca3af;font-size:12px">${motors.length} motor${motors.length!==1?'en':''}</span>
-            ${motors.some(m=>m.bestHP)?`<span style="font-size:12px;font-weight:700;color:#2563eb">best ${Math.max(...motors.filter(m=>m.bestHP).map(m=>m.bestHP))} HP</span>`:''}
+            ${motors.every(m=>mkIsKlasseType(m.motorType))&&klasseTekst(bestPerKlasse(motors.flatMap(m=>m.sessies)))
+              ?`<span style="font-size:12px;font-weight:700;color:#2563eb">best ${klasseTekst(bestPerKlasse(motors.flatMap(m=>m.sessies)))}</span>`
+              :motors.some(m=>m.bestHP)?`<span style="font-size:12px;font-weight:700;color:#2563eb">best ${Math.max(...motors.filter(m=>m.bestHP).map(m=>m.bestHP))} HP</span>`:''}
           </div>
           <span style="font-size:14px;color:#9ca3af;display:inline-block;transform:rotate(${ingeklapt?'0':'180'}deg)">▼</span>
         </div>
@@ -533,7 +551,7 @@ function renderMotorenResultaten(){
           <thead><tr>${(toonKlant?['Motornummer','Klant','Naam','Best HP','Beste carbu','Sessies','Laatste test']:['Motornummer','Naam','Best HP','Beste carbu','Sessies','Laatste test']).map(h=>`<th>${h}</th>`).join('')}</tr></thead>
           <tbody>${motors.map(m=>`<tr style="cursor:pointer" onclick="openMotorDetail('${esc(m.motorNummer)}')">
             <td style="font-weight:700;color:#1d4ed8">${esc(m.motorNummer)}</td>${toonKlant?`<td>${esc(m.klant)}</td>`:''}<td>${esc(m.motorNaam)}</td>
-            <td style="font-weight:700;color:#2563eb">${m.bestHP?`${m.bestHP} HP`:'—'}</td>
+            <td style="font-weight:700;color:#2563eb;white-space:nowrap">${hpTekst(m)}</td>
             <td style="color:#374151;font-weight:600">${esc(m.bestCarbu||'—')}</td>
             <td style="color:#374151">${m.sessies.length}</td>
             <td style="color:#6b7280">${m.lastDatum?fmtDt(m.lastDatum):'—'}</td></tr>`).join('')}</tbody>
@@ -629,7 +647,9 @@ function renderMotorDetail(){
         </div>`:''}
       </div>
       <div style="display:flex;gap:14px;align-items:flex-start;flex-shrink:0;padding-top:2px">
-        ${bestHP?`<div class="stat-mini"><div style="font-size:26px;font-weight:800;color:#2563eb;line-height:1">${bestHP}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">HP BEST</div></div>`:''}
+        ${mkIsKlasseType(motorType)&&Object.keys(bestPerKlasse(motorSessies)).length
+          ?Object.entries(bestPerKlasse(motorSessies)).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`<div class="stat-mini"><div style="font-size:26px;font-weight:800;color:#2563eb;line-height:1">${v}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">HP ${esc(klasseKort(k))}</div></div>`).join('')
+          :bestHP?`<div class="stat-mini"><div style="font-size:26px;font-weight:800;color:#2563eb;line-height:1">${bestHP}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">HP BEST</div></div>`:''}
         ${bestNm?`<div class="stat-mini"><div style="font-size:26px;font-weight:800;color:#111827;line-height:1">${bestNm}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">NM BEST</div></div>`:''}
         <div class="stat-mini"><div style="font-size:22px;font-weight:700;color:#374151;line-height:1">${motorSessies.length}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">SESSIES</div></div>
         <div class="stat-mini"><div style="font-size:22px;font-weight:700;color:#374151;line-height:1">${totalRuns}</div><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">RUNS</div></div>

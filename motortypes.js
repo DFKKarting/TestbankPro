@@ -2,19 +2,29 @@
 // Eén centrale lijst voor de hele website. Nieuw merk of type? Voeg het hier toe.
 const MOTOR_TYPES = {
   'Honda': ['Cadet', 'Junior', 'Senior'],
-  'IAME':  ['X30 Mini', 'X30 Junior', 'X30 Senior', 'Super Shifter', 'S125', 'KA100'],
+  'IAME':  ['X30 Mini', 'X30', 'X30 Junior', 'X30 Senior', 'Super Shifter', 'S125', 'KA100'],
   'TM':    ['KZ'],
+};
+
+// Motortypes die per sessie in een andere klasse getest worden (DFK-motoren).
+// De motor zelf heeft type 'X30'; elke sessie kiest 'X30 Junior' of 'X30 Senior'.
+const MOTOR_KLASSEN = {
+  'X30': ['X30 Junior', 'X30 Senior'],
 };
 
 const MK_ANDER = '__ander__';
 const mkNorm = s => String(s || '').toLowerCase().replace(/[\s\-_.]/g, '');
 const mkZoekMerk = v => Object.keys(MOTOR_TYPES).find(m => mkNorm(m) === mkNorm(v));
 const mkZoekType = (merk, v) => (MOTOR_TYPES[merk] || []).find(t => mkNorm(t) === mkNorm(v));
+// 'X30 Junior' → 'X30' (het motortype waartoe een sessieklasse hoort), anders null
+const mkBasisType = v => Object.keys(MOTOR_KLASSEN).find(b => MOTOR_KLASSEN[b].some(k => mkNorm(k) === mkNorm(v))) || null;
+const mkIsKlasseType = v => Object.keys(MOTOR_KLASSEN).some(b => mkNorm(b) === mkNorm(v));
 
 // Vervangt de tekstvelden voor merk en type door keuzelijsten (+ "Ander…").
 // De originele inputs blijven bestaan (verborgen) en bevatten altijd de gekozen waarde,
 // dus bestaande code die .value leest of zet blijft gewoon werken.
-function motorKeuze(merkId, typeId) {
+// opts.sessie: sessieformulier — een type met klassen (X30) moet als Junior/Senior gekozen worden.
+function motorKeuze(merkId, typeId, opts = {}) {
   const merkInp = document.getElementById(merkId);
   const typeInp = document.getElementById(typeId);
   if (!merkInp || !typeInp || merkInp.dataset.mk) return;
@@ -35,6 +45,9 @@ function motorKeuze(merkId, typeId) {
   };
   const merkSel = maakSelect(merkInp);
   const typeSel = maakSelect(typeInp);
+  const hint = document.createElement('div');
+  hint.style.cssText = 'display:none;font-size:12px;font-weight:600;color:#b45309;margin-top:4px';
+  typeInp.parentNode.insertBefore(hint, typeInp.nextSibling);
   merkInp.placeholder = 'Ander merk…';
   typeInp.placeholder = 'Ander type…';
 
@@ -56,10 +69,17 @@ function motorKeuze(merkId, typeId) {
     if (merk) {
       typeSel.style.display = '';
       typeSel.disabled = false;
-      typeSel.innerHTML = opties(MOTOR_TYPES[merk], 'Kies type');
-      const type = mkZoekType(merk, tv);
+      const lijst = opts.sessie ? MOTOR_TYPES[merk].filter(t => !mkIsKlasseType(t)) : MOTOR_TYPES[merk];
+      typeSel.innerHTML = opties(lijst, 'Kies type');
+      const klasseNodig = opts.sessie && mkIsKlasseType(tv);
+      if (klasseNodig) setV(typeInp, '');
+      const klassen = klasseNodig ? MOTOR_KLASSEN[Object.keys(MOTOR_KLASSEN).find(k => mkNorm(k) === mkNorm(tv))] : [];
+      hint.textContent = klasseNodig ? `Kies ${klassen.map(k => k.slice(tv.length).trim() || k).join(' of ')} voor deze test` : '';
+      hint.style.display = klasseNodig ? '' : 'none';
+      typeSel.style.borderColor = klasseNodig ? '#f59e0b' : '';
+      const type = klasseNodig ? null : lijst.find(t => mkNorm(t) === mkNorm(tv));
       if (type) { typeSel.value = type; if (tv !== type) setV(typeInp, type); }
-      else typeSel.value = (tv || anderType) ? MK_ANDER : '';
+      else typeSel.value = (!klasseNodig && (tv || anderType)) ? MK_ANDER : '';
       typeInp.style.display = typeSel.value === MK_ANDER ? '' : 'none';
     } else if (merkSel.value === MK_ANDER) {
       // Onbekend merk: type vrij invullen
@@ -72,6 +92,7 @@ function motorKeuze(merkId, typeId) {
       typeSel.innerHTML = '<option value="">— Kies eerst merk —</option>';
       typeInp.style.display = 'none';
     }
+    if (!merk) { hint.style.display = 'none'; typeSel.style.borderColor = ''; }
     if (typeSel.style.display !== 'none') typeInp.style.marginTop = '6px';
   }
 

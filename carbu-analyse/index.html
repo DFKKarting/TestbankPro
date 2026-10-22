@@ -130,6 +130,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   #sub-tabs{padding:6px 0 8px}
 }
 </style>
+<script src="/motortypes.js"></script>
 </head>
 <body>
 
@@ -235,10 +236,13 @@ const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const f1 = v => (v??0).toFixed(1);
 const f2 = v => (v??0).toFixed(2);
 const fRpm = v => v ? Math.round(v).toLocaleString('nl-NL') : '—';
-const motorLabel = mn => {
+// Sleutel in combinaties: motornummer, of "motornummer · Junior" voor een X30-motor die per klasse getest wordt
+const KLASSE_SEP = ' · ';
+const motorLabel = key => {
+  const [mn, klasse] = String(key ?? '').split(KLASSE_SEP);
   const c = motorenCache[mn];
   const naam = c?.motor_naam || c?.motorNaam;
-  return naam || mn || '?';
+  return (naam || mn || '?') + (klasse ? ` (${klasse})` : '');
 };
 
 function toggleNav(){document.getElementById('nav-dropdown').classList.toggle('open');}
@@ -352,8 +356,12 @@ function effectiefCarbu(sessie, run){
 function verwerkCombinaties(){
   combinaties = {};
   sessies.forEach(sessie=>{
-    const mn = sessie.motorNummer;
-    if(!mn) return;
+    if(!sessie.motorNummer) return;
+    // X30-motor die als Junior of Senior getest wordt: per klasse apart vergelijken
+    const basis = mkBasisType(sessie.motorType);
+    const mn = basis && mkIsKlasseType(motorenCache[sessie.motorNummer]?.motor_type)
+      ? sessie.motorNummer + KLASSE_SEP + sessie.motorType.slice(basis.length).trim()
+      : sessie.motorNummer;
     (sessie.runs||[]).forEach(run=>{
       if(!run.curveData||!run.curveData.length) return;
       const carbu = effectiefCarbu(sessie, run);
