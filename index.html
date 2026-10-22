@@ -1241,12 +1241,7 @@ function renderNieuw(){
       <button class="btn-outline" data-action="naar-lijst">Annuleren</button>
     </div>
     ${hasRuns?`<div id="runs-container">${pendingRuns.map((r,i)=>runCardHtml(r,i,pendingRuns.length)).join('')}</div>
-    <div id="fout-box" style="display:none" class="error-box"></div>
-    <div class="actions-row">
-      <button class="btn-blue-lg" data-action="runs-opslaan">&#11015; Runs opslaan</button>
-      <button class="btn-blue-lg" data-action="opslaan" style="background:#059669">${sessieStartTijd?'&#10003; Sessie afsluiten':'Sessie opslaan'}</button>
-      <button class="btn-outline" data-action="naar-lijst">Annuleren</button>
-    </div>`:''}
+    <div id="fout-box" style="display:none" class="error-box"></div>`:''}
   </div>`;
   acInline(document.getElementById('sf-mn'),'motorNummer',mn=>mnMapFill(mn));
   const sfKlEl=document.getElementById('sf-kl');
