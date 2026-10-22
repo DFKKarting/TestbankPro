@@ -41,7 +41,7 @@ function motorKeuze(merkId, typeId) {
   const opties = (lijst, leeg) =>
     `<option value="" disabled hidden>${leeg}</option>` +
     lijst.map(x => `<option value="${x.replace(/"/g, '&quot;')}">${x}</option>`).join('') +
-    `<option value="${MK_ANDER}">Ander…</option>`;
+    `<option disabled>──────────</option><option value="${MK_ANDER}">Ander…</option>`;
   merkSel.innerHTML = opties(Object.keys(MOTOR_TYPES), 'Kies merk');
   let anderMerk = false, anderType = false; // gebruiker koos zelf "Ander…"
 
