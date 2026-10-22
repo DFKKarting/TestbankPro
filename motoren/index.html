@@ -180,6 +180,7 @@ let selectedMotor = null;
 let motorenTab = 'dfk';
 let motorenZoek = '';
 let dfkIngeklapt = new Set();
+let motorenMerk = {dfk:'', klant:''}; // gekozen merk-vak per tab ('' = alle)
 let view = 'motoren';
 let motorRevisies = [];
 async function laadMotorRevisies(){
@@ -337,7 +338,7 @@ async function dbSave(s){
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 function saveMotorState(){
-  try{localStorage.setItem('tbp_motoren_view',JSON.stringify({view,selectedMotorNr:selectedMotor?.motorNummer||null,motorenTab,dfkIngeklapt:[...dfkIngeklapt]}));}catch(e){}
+  try{localStorage.setItem('tbp_motoren_view',JSON.stringify({view,selectedMotorNr:selectedMotor?.motorNummer||null,motorenTab,dfkIngeklapt:[...dfkIngeklapt],motorenMerk}));}catch(e){}
 }
 function restoreMotorState(){
   try{
@@ -346,6 +347,7 @@ function restoreMotorState(){
     if(s.selectedMotorNr)selectedMotor=getMotorData(s.selectedMotorNr);
     if(s.motorenTab)motorenTab=s.motorenTab;
     if(s.dfkIngeklapt)dfkIngeklapt=new Set(s.dfkIngeklapt);
+    if(s.motorenMerk&&typeof s.motorenMerk==='object')motorenMerk={...motorenMerk,...s.motorenMerk};
     if(view==='motor-detail'&&!selectedMotor)view='motoren';
     if(view==='motor-nieuw')view='motoren';
   }catch(e){}
@@ -584,6 +586,23 @@ function renderMotorenResultaten(){
       </div>`;
     }).join('');
   };
+  // Klikbare vakken per merk (bovenaan de DFK- en Klanten-tab)
+  const merkVan=m=>m.motorMerk||'Onbekend';
+  const merkVolg=Object.keys(MOTOR_TYPES);
+  const gekozenMerk=lijst=>{const k=motorenMerk[tabActief]||'';return lijst.some(m=>merkVan(m)===k)?k:'';};
+  const perMerk=lijst=>{const k=gekozenMerk(lijst);return k?lijst.filter(m=>merkVan(m)===k):lijst;};
+  const merkVakken=lijst=>{
+    if(!lijst.length)return'';
+    const tel={};lijst.forEach(m=>{tel[merkVan(m)]=(tel[merkVan(m)]||0)+1;});
+    const merken=Object.keys(tel).sort((a,b)=>{const ia=merkVolg.indexOf(a),ib=merkVolg.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'nl');});
+    const actief=gekozenMerk(lijst);
+    const kleur={Honda:'#dc2626',IAME:'#2563eb',TM:'#059669'};
+    const vak=(k,label,n)=>{const aan=actief===k;const c=kleur[k]||'#374151';
+      return`<button onclick="motorenMerk['${tabActief}']='${k.replace(/'/g,"\\'")}';saveMotorState();renderMotorenResultaten()" style="flex:1 1 120px;min-width:110px;text-align:left;cursor:pointer;font-family:inherit;background:${aan?c:'#fff'};color:${aan?'#fff':'#111827'};border:1.5px solid ${aan?c:'#e5e7eb'};border-left:5px solid ${c};border-radius:10px;padding:10px 14px">
+        <div style="font-size:15px;font-weight:800;letter-spacing:.3px">${esc(label)}</div>
+        <div style="font-size:12px;opacity:.75;margin-top:2px">${n} motor${n!==1?'en':''}</div></button>`;};
+    return`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">${vak('','Alle',lijst.length)}${merken.map(k=>vak(k,k,tel[k])).join('')}</div>`;
+  };
   const res=document.getElementById('motoren-resultaten');
   if(!res)return;
   res.innerHTML=!actiefMotoren.length&&!archiefMotoren.length
@@ -597,7 +616,7 @@ function renderMotorenResultaten(){
         ?(archiefGefilterd.length?motorTabelArchief(archiefGefilterd):`<div class="empty-state" style="padding:32px"><div style="font-size:32px;margin-bottom:8px">&#x1F4E6;</div><div style="font-weight:600">Geen gearchiveerde motoren</div></div>`)
         :zoekStr&&!dfkGefilterd.length&&!klantGefilterd.length
           ?`<div class="empty-state" style="padding:32px"><div style="font-size:32px;margin-bottom:8px">&#x1F50D;</div><div style="font-weight:600">Geen resultaten voor "${esc(motorenZoek)}"</div></div>`
-          :tabActief==='dfk'?motorTabelGroep(dfkGefilterd,false):motorTabelGroep(klantGefilterd,true)
+          :merkVakken(tabActief==='dfk'?dfkGefilterd:klantGefilterd)+motorTabelGroep(perMerk(tabActief==='dfk'?dfkGefilterd:klantGefilterd),tabActief!=='dfk')
       }`;
 }
 function renderMotoren(){

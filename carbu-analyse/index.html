@@ -929,7 +929,7 @@ function renderOverzicht(){
       <div class="stat-card"><div class="stat-val">${carbuSet.size}</div><div class="stat-lbl">Carburatoren</div></div>
       <div class="stat-card"><div class="stat-val">${rijen.length}</div><div class="stat-lbl">Geteste combinaties</div></div>
       <div class="stat-card"><div class="stat-val">${aantalRuns}</div><div class="stat-lbl">Runs met curvedata</div></div>
-      ${besteScore>0?`<div class="stat-card"><div class="stat-val" style="font-size:18px">${esc(motorLabel(besteMn))}</div><div class="stat-lbl">Beste: ${esc(besteCarbu)} (${besteScore.toFixed(1)})</div></div>`:''}
+      ${besteScore>0?`<div class="stat-card"><div class="stat-val" style="color:#059669">${besteScore.toFixed(1)}</div><div class="stat-lbl" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="Beste combinatie: ${esc(motorLabel(besteMn))} × ${esc(besteCarbu)}">Beste: ${esc(motorLabel(besteMn))} × ${esc(besteCarbu)}</div></div>`:''}
     </div>
     <div class="card">
       <div class="card-title">Alle geteste combinaties</div>
