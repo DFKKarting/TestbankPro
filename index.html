@@ -872,11 +872,16 @@ function parseSpx(buffer, filename, fileDate) {
     const postCount = parseInt(get('post_count'))||0;
     const iStart = preCount;
     const iEnd = n - postCount;
+    // Ondergrens afhankelijk van het toerental van de motor: X30 (±16.000 tpm) → ±5.500,
+    // Honda 4-takt (±6.500 tpm) → ±2.300. Een vaste 5.500 liet van een Honda-curve bijna niets over.
+    let maxRampRpm=0;
+    for (let i=iStart;i<iEnd;i++) if (rpmVals[i]>maxRampRpm&&rpmVals[i]<25000) maxRampRpm=rpmVals[i];
+    const minCurveRpm=Math.max(1500, maxRampRpm*0.35);
     for (let i=iStart;i<iEnd;i++) {
       const rpm=rpmVals[i];
       const hp=(wattVals[i]||0)*HP_CONV;
       const nm=(nmWheelVals[i]||0)*NM_CONV;
-      if (rpm>=5500&&rpm<=16000&&hp>0.5) curveData.push({rpm:Math.round(rpm),hp:Math.round(hp*10)/10,nm:Math.round(nm*10)/10});
+      if (rpm>=minCurveRpm&&rpm<=20000&&hp>0.5) curveData.push({rpm:Math.round(rpm),hp:Math.round(hp*10)/10,nm:Math.round(nm*10)/10});
     }
     curveData.sort((a,b)=>a.rpm-b.rpm);
     // Spike-detectie: na het HP-piekpunt een onnatuurlijke stijging afknippen
@@ -1409,7 +1414,7 @@ function renderDetail(){
         ondragover="event.preventDefault();this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
         ondragleave="this.style.borderColor='';this.style.background=''"
         ondrop="event.preventDefault();this.style.borderColor='';this.style.background='';addRunsNaarSessie(event.dataTransfer.files)">
-        <span>📂 Sleep SPX-bestanden hierop of klik om te kiezen</span>
+        <span>📂 Sleep SPX-bestanden hierop of klik om te kiezen<br><span style="font-size:11px">Bestand van een run die al in deze sessie zit? Dan wordt enkel de curve opnieuw ingelezen.</span></span>
         <input type="file" id="spx-file-input" multiple accept=".spx" style="display:none" onchange="addRunsNaarSessie(this.files);this.value=''">
       </div>
     </div>
@@ -1802,10 +1807,23 @@ async function addRunsNaarSessie(files){
   if(zone) zone.style.opacity='0.5';
   try {
     const newRuns=[];
+    const bijgewerkt={}; // run-id → nieuwe curveData (SPX van een run die al in deze sessie zit)
     for(const file of fileArr){
       const buf=await file.arrayBuffer();
-      newRuns.push({...parseSpx(buf,file.name,file.lastModified),id:uuid()});
+      const parsed=parseSpx(buf,file.name,file.lastModified);
+      const bestaand=(selected?.runs||[]).find(r=>r.bestandsnaam&&r.bestandsnaam===file.name);
+      if(bestaand) bijgewerkt[bestaand.id]=parsed.curveData;
+      else newRuns.push({...parsed,id:uuid()});
     }
+    // Bestaande runs: enkel de curve opnieuw inlezen (bv. na een verbetering van het inlezen)
+    const nBijgewerkt=Object.keys(bijgewerkt).length;
+    if(nBijgewerkt){
+      selected={...selected,runs:selected.runs.map(r=>bijgewerkt[r.id]?{...r,curveData:bijgewerkt[r.id]}:r)};
+      sessies=sessies.map(x=>x.id===selected.id?selected:x);
+      saveLocal(); await dbSave(selected);
+      alert(`✓ Curve opnieuw ingelezen voor ${nBijgewerkt} bestaande run${nBijgewerkt!==1?'s':''}.`);
+    }
+    if(!newRuns.length){ if(nBijgewerkt) renderDetail(); return; }
     detailPendingRuns=[...detailPendingRuns,...newRuns];
     let container=document.getElementById('detail-pending-runs');
     if(!container){
