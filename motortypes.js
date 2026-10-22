@@ -132,3 +132,55 @@ function motorKeuze(merkId, typeId, opts = {}) {
   if (klantInp) ['input', 'change'].forEach(ev => klantInp.addEventListener(ev, () => sync()));
   sync();
 }
+
+// ── CARBURATEURS: naam + motortype ────────────────────────────────────────────
+// Dezelfde carbunaam op een ander motortype is een andere carbu (bv. "DFK 2" op X30 Mini ≠ op X30).
+// X30 Junior en X30 Senior horen bij hetzelfde motortype X30 (zelfde motor, andere klasse).
+function mkCarbuType(type) {
+  const t = String(type || '').trim();
+  if (!t) return '';
+  const basis = mkBasisType(t);
+  if (basis) return basis;
+  for (const merk of Object.keys(MOTOR_TYPES)) { const c = mkZoekType(merk, t); if (c) return c; }
+  return t;
+}
+const mkCarbuSleutel = (naam, type) => String(naam || '').trim() + '|' + mkCarbuType(type);
+// Merk bij een (carbu)type, voor labels: 'X30' → 'IAME', 'Cadet' → 'Honda'
+const mkMerkVanType = type => Object.keys(MOTOR_TYPES).find(m => mkZoekType(m, type)) || '';
+
+// Gebruik van carbu's in sessies: { sleutel: { naam, type, sessies: Set(id), types: Set(volledig type) } }
+// typeVanMotor(motorNummer) geeft het motortype als de sessie er zelf geen heeft.
+function mkCarbuGebruik(sessies, typeVanMotor) {
+  const res = {};
+  (sessies || []).forEach(s => {
+    const volledig = (s.motorType || s.motor_type || (typeVanMotor ? typeVanMotor(s.motorNummer || s.motor_nummer) : '') || '').trim();
+    const type = mkCarbuType(volledig);
+    const namen = new Set([(s.carbu || '').trim(), ...(s.runs || []).map(r => (r.carbu || '').trim())].filter(Boolean));
+    namen.forEach(naam => {
+      const k = naam + '|' + type;
+      const e = (res[k] ??= { naam, type, sessies: new Set(), types: new Set() });
+      if (s.id) e.sessies.add(s.id);
+      if (volledig) e.types.add(volledig);
+    });
+  });
+  return res;
+}
+
+// Welke carbu-records moeten aangemaakt of aangevuld worden zodat elke (naam, type) uit de sessies bestaat.
+// dbCarbus: [{id, naam, motorType}]. Een bestaand record zonder type krijgt het type van zijn eerste gebruik.
+function mkCarbuSync(dbCarbus, gebruik) {
+  const bestaand = new Set(dbCarbus.map(c => mkCarbuSleutel(c.naam, c.motorType)));
+  const zonderType = {}; // naam → record zonder motortype dat nog een type mag krijgen
+  dbCarbus.forEach(c => { if (!mkCarbuType(c.motorType) && !zonderType[c.naam.trim()]) zonderType[c.naam.trim()] = c; });
+  const updates = [], nieuw = [];
+  Object.values(gebruik).sort((a, b) => b.sessies.size - a.sessies.size).forEach(g => {
+    const k = g.naam + '|' + g.type;
+    if (bestaand.has(k)) return;
+    if (!g.type) { if (dbCarbus.some(c => c.naam.trim() === g.naam)) return; }
+    const vrij = zonderType[g.naam];
+    if (vrij && g.type) { updates.push({ id: vrij.id, motor_type: g.type }); delete zonderType[g.naam]; }
+    else nieuw.push({ naam: g.naam, motor_type: g.type });
+    bestaand.add(k);
+  });
+  return { updates, nieuw };
+}

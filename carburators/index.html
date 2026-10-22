@@ -109,6 +109,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100v
   #sub-tabs{padding:6px 0 8px}
 }
 </style>
+<script src="/motortypes.js"></script>
 <script src="/versie.js" defer></script>
 </head>
 <body>
@@ -164,6 +165,7 @@ function uuid(){ if(typeof crypto!=='undefined'&&crypto.randomUUID) return crypt
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let sb;
 let carbus = [];
+let carbuGebruik = {}; // (naam|motortype) → gebruik in sessies, zie mkCarbuGebruik
 let view = 'lijst'; // 'lijst' | 'nieuw' | 'edit'
 let huidig = null;  // carburator in bewerking
 let zoek = '';
@@ -190,30 +192,27 @@ async function laadCarbus(){
       }
     }catch{}
   }
-  // Sync: carbu-namen uit sessies die nog niet in de lijst staan automatisch toevoegen
+  // Sync: elke carbu (naam + motortype) die in sessies gebruikt wordt, moet in de lijst staan.
+  // Dezelfde naam op een ander motortype is een aparte carbu (X30 Junior/Senior = X30).
   try{
-    const {data:sd} = await sb.from('sessies').select('carbu,runs');
-    if(sd?.length){
-      const bestaand = new Set(carbus.map(c=>c.naam));
-      const namen = new Set();
-      sd.forEach(s=>{
-        if(s.carbu?.trim()) namen.add(s.carbu.trim());
-        (s.runs||[]).forEach(r=>{ if(r.carbu?.trim()) namen.add(r.carbu.trim()); });
-      });
-      const nieuw = [...namen].filter(n=>!bestaand.has(n));
-      if(nieuw.length){
-        const records = nieuw.map(naam=>({
-          id: crypto.randomUUID(),
-          naam, motor_type:'', merk:'', model:'', baan_hoog:'', baan_laag:'', test_hoog:'', test_laag:'', opmerkingen:''
-        }));
-        const {error:e3} = await sb.from('carburatoren').upsert(records,{onConflict:'id'});
-        if(!e3){
-          const {data:d2} = await sb.from('carburatoren').select('*').order('naam');
-          carbus = (d2||[]).map(dbNaarJs);
-        }
-      }
+    const [{data:sd},{data:md}] = await Promise.all([
+      sb.from('sessies').select('id,carbu,runs,motor_type,motor_nummer'),
+      sb.from('motoren').select('motor_nummer,motor_type')
+    ]);
+    const motorType = {}; (md||[]).forEach(m=>{ motorType[m.motor_nummer]=m.motor_type||''; });
+    carbuGebruik = mkCarbuGebruik(sd||[], mn=>motorType[mn]);
+    const {updates, nieuw} = mkCarbuSync(carbus, carbuGebruik);
+    for(const u of updates) await sb.from('carburatoren').update({motor_type:u.motor_type}).eq('id',u.id);
+    if(nieuw.length){
+      await sb.from('carburatoren').upsert(nieuw.map(n=>({
+        id: crypto.randomUUID(), naam:n.naam, motor_type:n.motor_type, merk:'', model:'', baan_hoog:'', baan_laag:'', test_hoog:'', test_laag:'', opmerkingen:''
+      })),{onConflict:'id'});
     }
-  }catch{}
+    if(updates.length||nieuw.length){
+      const {data:d2} = await sb.from('carburatoren').select('*').order('naam');
+      carbus = (d2||[]).map(dbNaarJs);
+    }
+  }catch(e){ console.error('carbu sync',e); }
 }
 
 async function slaOpInDb(obj){
@@ -241,7 +240,8 @@ function renderCarbuResultaten(){
     : [...carbus];
   const groepen = {};
   gefilterd.forEach(c=>{
-    const k = c.motorType?.trim() || '(geen motortype)';
+    const t = mkCarbuType(c.motorType);
+    const k = t ? [mkMerkVanType(t), t].filter(Boolean).join(' · ') : '(geen motortype)';
     if(!groepen[k]) groepen[k]=[];
     groepen[k].push(c);
   });
@@ -254,7 +254,7 @@ function renderCarbuResultaten(){
         <div class="empty-title">Nog geen carburatoren</div>
         <p style="font-size:13px;margin-top:6px">Voeg je eerste carburator toe om instellingen bij te houden.</p>
       </div>` : gefilterd.length===0 ? `<div class="empty-state"><div class="empty-title">Geen resultaten voor "${esc(zoek)}"</div></div>` :
-      Object.entries(groepen).sort(([a],[b])=>a.localeCompare(b)).map(([groep,lijst])=>`
+      Object.entries(groepen).sort(([a],[b])=>(a==='(geen motortype)')-(b==='(geen motortype)')||a.localeCompare(b)).map(([groep,lijst])=>`
         <div class="sectie-label">${esc(groep)}</div>
         ${lijst.sort((a,b)=>a.naam.localeCompare(b.naam)).map(c=>carbuKaart(c)).join('')}
       `).join('');
@@ -397,6 +397,21 @@ async function slaOp(){
 }
 
 function verwijderCarbu(id){
+  // Een carbu die nog in sessies gebruikt wordt, zou bij het herladen automatisch terugkomen
+  const c = carbus.find(x=>x.id===id);
+  const g = c && carbuGebruik[mkCarbuSleutel(c.naam, c.motorType)];
+  const andereZelfdeSleutel = c && carbus.some(x=>x.id!==id && mkCarbuSleutel(x.naam,x.motorType)===mkCarbuSleutel(c.naam,c.motorType));
+  if(g && g.sessies.size && !andereZelfdeSleutel){
+    customConfirm({
+      titel:'Carburator is nog in gebruik',
+      tekst:`"${c.naam}" wordt gebruikt in ${g.sessies.size} sessie${g.sessies.size!==1?'s':''}${g.type?' ('+g.type+')':''}. Verwijderen kan pas als hij nergens meer gebruikt wordt — anders komt hij automatisch terug. Wil je hem samenvoegen met een andere carbu? Gebruik dan "Hernoem" in Carbu Optimalisatie en geef hem de naam van die andere carbu.`,
+      icoon:'⚠️',
+      bevestig:'OK',
+      bevestigKleur:'#2563eb',
+      onOk:()=>{}
+    });
+    return;
+  }
   customConfirm({
     titel:'Carburator verwijderen?',
     tekst:'Alle instellingen van deze carburator worden permanent verwijderd.',

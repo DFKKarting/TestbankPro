@@ -279,26 +279,24 @@ async function laadCarbuLijstDB(){
 }
 
 // Geeft alle bekende carbu-namen terug: unie van Supabase carburatoren + sessiedata
+// (enkel carbu's van motortype X30: Carbu Optimalisatie is voor X30-motoren)
 function alleCarbuNamen(){
-  const set = new Set(carbuLijstDB.map(c=>c.naam).filter(Boolean));
+  const set = new Set(carbuLijstDB.filter(c=>mkCarbuType(c.motorType)==='X30').map(c=>c.naam).filter(Boolean));
   Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>set.add(c)));
   return [...set].sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
 }
 
+// Elke carbu (naam + motortype) die in sessies gebruikt wordt, moet in de carburatoren-tabel staan
 async function syncCarbuNamenNaarDB(){
-  const namen = new Set();
-  sessies.forEach(s=>{
-    if(s.carbu?.trim()) namen.add(s.carbu.trim());
-    (s.runs||[]).forEach(r=>{ if(r.carbu?.trim()) namen.add(r.carbu.trim()); });
-  });
-  const bestaand = new Set(carbuLijstDB.map(c=>c.naam));
-  const nieuw = [...namen].filter(n=>!bestaand.has(n));
-  if(!nieuw.length) return;
-  const records = nieuw.map(naam=>({
-    id: (crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16))),
-    naam, motor_type:'', merk:'', model:'', baan_hoog:'', baan_laag:'', test_hoog:'', test_laag:'', opmerkingen:''
-  }));
-  await sb.from('carburatoren').upsert(records,{onConflict:'id'});
+  const {updates, nieuw} = mkCarbuSync(carbuLijstDB, mkCarbuGebruik(sessies, mn=>motorenCache[mn]?.motor_type));
+  if(!updates.length && !nieuw.length) return;
+  for(const u of updates) await sb.from('carburatoren').update({motor_type:u.motor_type}).eq('id',u.id);
+  if(nieuw.length){
+    await sb.from('carburatoren').upsert(nieuw.map(n=>({
+      id: (crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16))),
+      naam:n.naam, motor_type:n.motor_type, merk:'', model:'', baan_hoog:'', baan_laag:'', test_hoog:'', test_laag:'', opmerkingen:''
+    })),{onConflict:'id'});
+  }
   await laadCarbuLijstDB();
 }
 
@@ -319,19 +317,29 @@ async function laadData(){
 }
 
 // ── CARBU HERNOEMEN ───────────────────────────────────────────────────────────
-async function hernoemCarbu(oudeNaam){
-  const nieuweNaam = prompt(`Nieuwe naam voor "${oudeNaam}":`, oudeNaam);
+// Hernoemt een carbu (naam + motortype) en past enkel de sessies van dat motortype aan.
+// Bestaat de nieuwe naam al voor dit type, dan worden ze samengevoegd.
+async function hernoemCarbu(oudeNaam, type=''){
+  const label = type ? `${oudeNaam} (${type})` : oudeNaam;
+  const nieuweNaam = prompt(`Nieuwe naam voor "${label}":\n(Bestaat die naam al voor dit motortype, dan worden ze samengevoegd.)`, oudeNaam);
   if(!nieuweNaam||nieuweNaam.trim()===oudeNaam) return;
   const nieuw = nieuweNaam.trim();
+  const sleutel = c => mkCarbuSleutel(c.naam, c.motorType);
+  const oudK = mkCarbuSleutel(oudeNaam, type), nieuwK = mkCarbuSleutel(nieuw, type);
 
-  // 1. Update naam in Supabase carburatoren tabel
-  const dbCarbu = carbuLijstDB.find(c=>c.naam===oudeNaam);
-  if(dbCarbu) await sb.from('carburatoren').update({naam:nieuw,updated_at:new Date().toISOString()}).eq('id',dbCarbu.id);
+  // 1. Carburatoren-tabel: hernoemen, of bij samenvoegen het oude record verwijderen
+  const dbCarbu = carbuLijstDB.find(c=>sleutel(c)===oudK) || (!type && carbuLijstDB.find(c=>c.naam===oudeNaam));
+  const doelBestaat = carbuLijstDB.some(c=>sleutel(c)===nieuwK);
+  if(dbCarbu){
+    if(doelBestaat) await sb.from('carburatoren').delete().eq('id',dbCarbu.id);
+    else await sb.from('carburatoren').update({naam:nieuw,updated_at:new Date().toISOString()}).eq('id',dbCarbu.id);
+  }
 
-  // 2. Update alle Supabase sessies die deze carbu bevatten
+  // 2. Sessies van dit motortype die deze carbu bevatten
   if(sb){
-    const teUpdaten = sessies.filter(s=>
-      s.carbu===oudeNaam || (s.runs||[]).some(r=>r.carbu===oudeNaam)
+    const vanType = s => mkCarbuType(s.motorType || motorenCache[s.motorNummer]?.motor_type) === mkCarbuType(type);
+    const teUpdaten = sessies.filter(s=> vanType(s) &&
+      (s.carbu===oudeNaam || (s.runs||[]).some(r=>r.carbu===oudeNaam))
     );
     for(const s of teUpdaten){
       const nieuweRuns = (s.runs||[]).map(r=>r.carbu===oudeNaam ? {...r, carbu:nieuw} : r);
@@ -831,47 +839,43 @@ function subTabsHtml(actief){
   return `<div class="sub-tabs">${tabs.map(([v,l])=>`<button class="sub-tab${v===actief?' active':''}" onclick="gaaNaar('${v}')">${l}</button>`).join('')}</div>`;
 }
 
-// Per carbu: op welke motoren (merk · type) hij getest is — uit álle sessies, niet enkel X30
-function carbuMotorTypes(){
-  const map = {};
-  sessies.forEach(s=>{
-    const m = motorenCache[s.motorNummer] || {};
-    const merk = s.motorMerk || m.motor_merk || '';
-    const type = s.motorType || m.motor_type || '';
-    const carbus = new Set([(s.carbu||'').trim(), ...(s.runs||[]).map(r=>(r.carbu||'').trim())].filter(Boolean));
-    carbus.forEach(c=>{ const e = (map[c] ??= {}); const k = merk+'|'+type; e[k] = {merk, type}; });
-  });
-  return map;
-}
 const MERK_KLEUR = { honda:['#fee2e2','#991b1b'], iame:['#dbeafe','#1e40af'], tm:['#dcfce7','#166534'] };
-function motorTypeChip({merk, type}){
-  const [bg, fg] = MERK_KLEUR[(merk||'').toLowerCase()] || ['#f3f4f6','#374151'];
-  const label = [merk || '?', type].filter(Boolean).join(' · ');
-  return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin:3px 4px 0 0;white-space:nowrap">${esc(label)}</span>`;
+function motorTypeChip(type){
+  const merk = mkMerkVanType(type);
+  const [bg, fg] = MERK_KLEUR[merk.toLowerCase()] || ['#f3f4f6','#374151'];
+  return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin:3px 4px 0 0;white-space:nowrap">${esc([merk,type].filter(Boolean).join(' · '))}</span>`;
 }
 
+// Alle carburatoren, per motortype: dezelfde naam op een ander motortype is een andere carbu
 function renderAlleCarburatoren(){
-  const alleNamen = alleCarbuNamen();
-  if(!alleNamen.length) return '';
-  const perCarbu = carbuMotorTypes();
-  const items = alleNamen.map(naam=>{
-    const types = Object.values(perCarbu[naam]||{}).sort((a,b)=>(a.merk+a.type).localeCompare(b.merk+b.type,'nl'));
-    const getest = !!perCarbu[naam];
-    const info = carbuLijstDB.find(c=>c.naam===naam);
-    const sub = info ? [info.merk,info.model].filter(Boolean).join(' · ') : '';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f3f4f6">
+  const gebruik = mkCarbuGebruik(sessies, mn=>motorenCache[mn]?.motor_type);
+  const rijen = {}; // sleutel → {naam, type, info, gebruik}
+  carbuLijstDB.forEach(c=>{ if(!c.naam) return; const k=mkCarbuSleutel(c.naam,c.motorType); rijen[k] ??= {naam:c.naam.trim(), type:mkCarbuType(c.motorType), info:c}; });
+  Object.entries(gebruik).forEach(([k,g])=>{ (rijen[k] ??= {naam:g.naam, type:g.type}).gebruik = g; });
+  const lijst = Object.values(rijen);
+  if(!lijst.length) return '';
+  const groepen = {};
+  lijst.forEach(r=>{ (groepen[r.type] ??= []).push(r); });
+  const groepLabel = t => t ? [mkMerkVanType(t), t].filter(Boolean).join(' · ') : 'Geen motortype';
+  const html = Object.keys(groepen).sort((a,b)=>(!a)-(!b)||groepLabel(a).localeCompare(groepLabel(b),'nl')).map(t=>`
+    <div style="margin-top:14px">${t?motorTypeChip(t):`<span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Geen motortype</span>`}</div>
+    ${groepen[t].sort((a,b)=>a.naam.localeCompare(b.naam,'nl',{sensitivity:'base'})).map(r=>{
+      const n = r.gebruik?.sessies.size || 0;
+      const sub = r.info ? [r.info.merk, r.info.model].filter(Boolean).join(' · ') : '';
+      const klassen = [...(r.gebruik?.types||[])].filter(x=>mkBasisType(x)).sort().join(', ');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f3f4f6">
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:#111827">${esc(naam)}${sub?` <span style="font-size:12px;font-weight:500;color:#9ca3af">${esc(sub)}</span>`:''}</div>
-        ${types.length?`<div>${types.map(motorTypeChip).join('')}</div>`:''}
+        <div style="font-size:14px;font-weight:700;color:#111827">${esc(r.naam)}${sub?` <span style="font-size:12px;font-weight:500;color:#9ca3af">${esc(sub)}</span>`:''}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${n?`${n} sessie${n!==1?'s':''}`:'nog niet getest'}${klassen?` · ${esc(klassen)}`:''}</div>
       </div>
-      <span class="${getest?'chip-gemeten':'chip-geen'}">${getest?'Getest':'Niet getest'}</span>
-      <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="hernoemCarbu('${esc(naam)}')">Hernoem</button>
-    </div>`;
-  }).join('');
+      <span class="${n?'chip-gemeten':'chip-geen'}">${n?'Getest':'Niet getest'}</span>
+      <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="hernoemCarbu('${esc(r.naam).replace(/'/g,"\\'")}','${esc(r.type)}')">Hernoem</button>
+    </div>`;}).join('')}`).join('');
   return `<div class="card">
-    <div class="card-title">Alle carburatoren <span style="font-size:13px;font-weight:500;color:#9ca3af">(${alleNamen.length})</span>
+    <div class="card-title">Alle carburatoren <span style="font-size:13px;font-weight:500;color:#9ca3af">(${lijst.length})</span>
       <a href="/carburators/" style="margin-left:auto;font-size:13px;font-weight:600;color:#2563eb;text-decoration:none">Details beheren →</a></div>
-    ${items}
+    <div style="font-size:12px;color:#6b7280;margin-top:-6px">Per motortype: dezelfde naam op een ander motortype is een andere carbu.</div>
+    ${html}
   </div>`;
 }
 
@@ -1099,7 +1103,7 @@ function renderCarburateurAnalyse(){
   }).join('');
 
   // Extra info uit Supabase carburatoren
-  const lsInfo = carbuLijstDB.find(c=>c.naam===cb);
+  const lsInfo = carbuLijstDB.find(c=>c.naam===cb && mkCarbuType(c.motorType)==='X30') || carbuLijstDB.find(c=>c.naam===cb);
   const lsDetail = lsInfo
     ? `<div style="font-size:12px;color:#6b7280;margin-top:4px">${[lsInfo.merk,lsInfo.model,lsInfo.motorType].filter(Boolean).join(' · ')}</div>`
     : '';
@@ -1112,7 +1116,7 @@ function renderCarburateurAnalyse(){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <label style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">Carburateur:</label>
       <select class="sel" style="max-width:280px;flex:1" onchange="gekozenCarbu=this.value;render()">${opts}</select>
-      <button class="btn-sm" onclick="hernoemCarbu('${esc(cb)}')">✏️ Naam aanpassen</button>
+      <button class="btn-sm" onclick="hernoemCarbu('${esc(cb)}','X30')">✏️ Naam aanpassen</button>
     </div>
     <div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
