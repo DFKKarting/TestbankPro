@@ -1,69 +1,59 @@
 -- Zet alle bestaande spellingen van motormerk en -type recht naar de vaste lijst.
 -- Voer dit uit in Supabase → SQL Editor → New query → plakken → Run
 --
--- Enkel hoofdletters, spaties, streepjes en punten worden gelijkgetrokken:
+-- Enkel hoofdletters, spaties, streepjes, underscores en punten worden gelijkgetrokken:
 --   'iame' → 'IAME', 'x30 senior' / 'X30-Senior' / 'x30senior' → 'X30 Senior'
 -- Waarden die niet in de lijst staan blijven ongewijzigd.
--- Het resultaat onderaan toont exact wat er aangepast is.
+-- Het is één enkele opdracht: alles wordt aangepast, of (bij een fout) niets.
+-- Het resultaat toont exact wat er aangepast is (leeg = alles stond al goed).
 --
 -- Houd deze lijst gelijk met MOTOR_TYPES in motortypes.js.
 
-begin;
-
-create temp table mk_merk(naam text) on commit drop;
-insert into mk_merk values ('Honda'), ('IAME'), ('TM');
-
-create temp table mk_type(naam text) on commit drop;
-insert into mk_type values
+with merken(naam) as (values
+  ('Honda'), ('IAME'), ('TM')
+),
+types(naam) as (values
   ('Cadet'), ('Junior'), ('Senior'),                                              -- Honda
   ('X30 Mini'), ('X30 Junior'), ('X30 Senior'), ('Super Shifter'), ('S125'),      -- IAME
-  ('KZ');                                                                         -- TM
-
-create temp table mk_wijzigingen(tabel text, kolom text, oud text, nieuw text, aantal int);
-
--- Overzicht van wat er zal veranderen (wordt onderaan getoond)
-insert into mk_wijzigingen
-  select 'motoren', 'motor_merk', t.motor_merk, l.naam, count(*) from motoren t join mk_merk l
-    on lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_merk <> l.naam group by 1, 2, 3, 4
-  union all
-  select 'motoren', 'motor_type', t.motor_type, l.naam, count(*) from motoren t join mk_type l
-    on lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_type <> l.naam group by 1, 2, 3, 4
-  union all
-  select 'sessies', 'motor_merk', t.motor_merk, l.naam, count(*) from sessies t join mk_merk l
-    on lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_merk <> l.naam group by 1, 2, 3, 4
-  union all
-  select 'sessies', 'motor_type', t.motor_type, l.naam, count(*) from sessies t join mk_type l
-    on lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_type <> l.naam group by 1, 2, 3, 4
-  union all
-  select 'revisies', 'motor_merk', t.motor_merk, l.naam, count(*) from revisies t join mk_merk l
-    on lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_merk <> l.naam group by 1, 2, 3, 4
-  union all
-  select 'revisies', 'motor_type', t.motor_type, l.naam, count(*) from revisies t join mk_type l
-    on lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g'))
-    where t.motor_type <> l.naam group by 1, 2, 3, 4;
-
--- Aanpassingen
-update motoren t set motor_merk = l.naam from mk_merk l
-  where lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_merk <> l.naam;
-update motoren t set motor_type = l.naam from mk_type l
-  where lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_type <> l.naam;
-
-update sessies t set motor_merk = l.naam from mk_merk l
-  where lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_merk <> l.naam;
-update sessies t set motor_type = l.naam from mk_type l
-  where lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_type <> l.naam;
-
-update revisies t set motor_merk = l.naam from mk_merk l
-  where lower(regexp_replace(t.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_merk <> l.naam;
-update revisies t set motor_type = l.naam from mk_type l
-  where lower(regexp_replace(t.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(l.naam, '[[:space:]_.-]', '', 'g')) and t.motor_type <> l.naam;
-
-commit;
-
--- Resultaat: wat is er aangepast (leeg = alles stond al goed)
-select tabel, kolom, oud, nieuw, aantal from mk_wijzigingen order by tabel, kolom, nieuw, oud;
+  ('KZ')                                                                          -- TM
+),
+mo as (
+  update motoren t set motor_merk = x.nieuw_merk, motor_type = x.nieuw_type
+  from (
+    select r.ctid as rid, r.motor_merk as oud_merk, r.motor_type as oud_type,
+           coalesce(lm.naam, r.motor_merk) as nieuw_merk, coalesce(lt.naam, r.motor_type) as nieuw_type
+    from motoren r
+    left join merken lm on lower(regexp_replace(r.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lm.naam, '[[:space:]_.-]', '', 'g'))
+    left join types  lt on lower(regexp_replace(r.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lt.naam, '[[:space:]_.-]', '', 'g'))
+  ) x
+  where t.ctid = x.rid and (x.nieuw_merk is distinct from x.oud_merk or x.nieuw_type is distinct from x.oud_type)
+  returning 'motoren'::text as tabel, x.oud_merk, x.nieuw_merk, x.oud_type, x.nieuw_type
+),
+se as (
+  update sessies t set motor_merk = x.nieuw_merk, motor_type = x.nieuw_type
+  from (
+    select r.ctid as rid, r.motor_merk as oud_merk, r.motor_type as oud_type,
+           coalesce(lm.naam, r.motor_merk) as nieuw_merk, coalesce(lt.naam, r.motor_type) as nieuw_type
+    from sessies r
+    left join merken lm on lower(regexp_replace(r.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lm.naam, '[[:space:]_.-]', '', 'g'))
+    left join types  lt on lower(regexp_replace(r.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lt.naam, '[[:space:]_.-]', '', 'g'))
+  ) x
+  where t.ctid = x.rid and (x.nieuw_merk is distinct from x.oud_merk or x.nieuw_type is distinct from x.oud_type)
+  returning 'sessies'::text as tabel, x.oud_merk, x.nieuw_merk, x.oud_type, x.nieuw_type
+),
+re as (
+  update revisies t set motor_merk = x.nieuw_merk, motor_type = x.nieuw_type
+  from (
+    select r.ctid as rid, r.motor_merk as oud_merk, r.motor_type as oud_type,
+           coalesce(lm.naam, r.motor_merk) as nieuw_merk, coalesce(lt.naam, r.motor_type) as nieuw_type
+    from revisies r
+    left join merken lm on lower(regexp_replace(r.motor_merk, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lm.naam, '[[:space:]_.-]', '', 'g'))
+    left join types  lt on lower(regexp_replace(r.motor_type, '[[:space:]_.-]', '', 'g')) = lower(regexp_replace(lt.naam, '[[:space:]_.-]', '', 'g'))
+  ) x
+  where t.ctid = x.rid and (x.nieuw_merk is distinct from x.oud_merk or x.nieuw_type is distinct from x.oud_type)
+  returning 'revisies'::text as tabel, x.oud_merk, x.nieuw_merk, x.oud_type, x.nieuw_type
+)
+select tabel, oud_merk, nieuw_merk, oud_type, nieuw_type, count(*) as aantal
+from (select * from mo union all select * from se union all select * from re) w
+group by tabel, oud_merk, nieuw_merk, oud_type, nieuw_type
+order by tabel, nieuw_merk, nieuw_type;
