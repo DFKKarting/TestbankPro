@@ -238,7 +238,8 @@ function getKlanten() {
     map[k].motoren.add(mn);
   });
   const achternaam = n => (n||'').trim().split(' ')[0] || '';
-  return Object.values(map).sort((a, b) => {
+  // DFK is geen klant: eigen motoren staan onder Motoren → DFK
+  return Object.values(map).filter(k => k.naam.trim().toLowerCase() !== 'dfk').sort((a, b) => {
     if (!a.naam && b.naam) return 1;
     if (a.naam && !b.naam) return -1;
     const cmp = achternaam(a.naam).localeCompare(achternaam(b.naam), 'nl', {sensitivity:'base'});
@@ -248,10 +249,11 @@ function getKlanten() {
 
 function renderKlanten() {
   const klanten = getKlanten();
+  const aantalSessies = klanten.reduce((t, k) => t + k.sessies.length, 0);
   let h = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:20px;font-weight:800;color:#111827">Klanten</div>
-      <div style="font-size:13px;color:#6b7280;margin-top:2px">${klanten.length} klant${klanten.length!==1?'en':''} — ${sessies.length} sessie${sessies.length!==1?'s':''} totaal</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:2px">${klanten.length} klant${klanten.length!==1?'en':''} — ${aantalSessies} sessie${aantalSessies!==1?'s':''} totaal</div>
     </div>
   </div>`;
   if (!klanten.length) {
