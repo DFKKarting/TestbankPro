@@ -831,19 +831,38 @@ function subTabsHtml(actief){
   return `<div class="sub-tabs">${tabs.map(([v,l])=>`<button class="sub-tab${v===actief?' active':''}" onclick="gaaNaar('${v}')">${l}</button>`).join('')}</div>`;
 }
 
+// Per carbu: op welke motoren (merk · type) hij getest is — uit álle sessies, niet enkel X30
+function carbuMotorTypes(){
+  const map = {};
+  sessies.forEach(s=>{
+    const m = motorenCache[s.motorNummer] || {};
+    const merk = s.motorMerk || m.motor_merk || '';
+    const type = s.motorType || m.motor_type || '';
+    const carbus = new Set([(s.carbu||'').trim(), ...(s.runs||[]).map(r=>(r.carbu||'').trim())].filter(Boolean));
+    carbus.forEach(c=>{ const e = (map[c] ??= {}); const k = merk+'|'+type; e[k] = {merk, type}; });
+  });
+  return map;
+}
+const MERK_KLEUR = { honda:['#fee2e2','#991b1b'], iame:['#dbeafe','#1e40af'], tm:['#dcfce7','#166534'] };
+function motorTypeChip({merk, type}){
+  const [bg, fg] = MERK_KLEUR[(merk||'').toLowerCase()] || ['#f3f4f6','#374151'];
+  const label = [merk || '?', type].filter(Boolean).join(' · ');
+  return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin:3px 4px 0 0;white-space:nowrap">${esc(label)}</span>`;
+}
+
 function renderAlleCarburatoren(){
   const alleNamen = alleCarbuNamen();
   if(!alleNamen.length) return '';
-  const getestSet = new Set();
-  Object.values(combinaties).forEach(cm=>Object.keys(cm).forEach(c=>getestSet.add(c)));
+  const perCarbu = carbuMotorTypes();
   const items = alleNamen.map(naam=>{
-    const getest = getestSet.has(naam);
+    const types = Object.values(perCarbu[naam]||{}).sort((a,b)=>(a.merk+a.type).localeCompare(b.merk+b.type,'nl'));
+    const getest = !!perCarbu[naam];
     const info = carbuLijstDB.find(c=>c.naam===naam);
-    const sub = info ? [info.merk,info.model,info.motorType].filter(Boolean).join(' · ') : '';
+    const sub = info ? [info.merk,info.model].filter(Boolean).join(' · ') : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f3f4f6">
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:#111827">${esc(naam)}</div>
-        ${sub?`<div style="font-size:12px;color:#9ca3af;margin-top:2px">${esc(sub)}</div>`:''}
+        <div style="font-size:14px;font-weight:700;color:#111827">${esc(naam)}${sub?` <span style="font-size:12px;font-weight:500;color:#9ca3af">${esc(sub)}</span>`:''}</div>
+        ${types.length?`<div>${types.map(motorTypeChip).join('')}</div>`:''}
       </div>
       <span class="${getest?'chip-gemeten':'chip-geen'}">${getest?'Getest':'Niet getest'}</span>
       <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="hernoemCarbu('${esc(naam)}')">Hernoem</button>
