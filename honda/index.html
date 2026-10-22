@@ -264,24 +264,29 @@ function renderResultaten(){
 }
 
 function sortKnopStyle(actief){
-  return `padding:7px 12px;border-radius:7px;border:1.5px solid ${actief?'#cc0000':'#e5e7eb'};background:${actief?'#cc0000':'#fff'};color:${actief?'#fff':'#374151'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap`;
+  return `padding:6px 12px;border-radius:6px;border:none;background:${actief?'#cc0000':'transparent'};color:${actief?'#fff':'#374151'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap`;
 }
 function setSortering(s){ sortering=s; renderLijst(); }
 
 function renderLijst(){
   if(!document.getElementById('motor-resultaten')){
     document.getElementById('main').innerHTML = `
-      <div class="head-row">
+      <div class="head-row" style="justify-content:space-between;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:10px">
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Honda.svg/120px-Honda.svg.png" style="height:28px;object-fit:contain" onerror="this.style.display='none'">
           <h2 class="page-title">Honda Motoren</h2>
         </div>
+        <button class="btn-blauw" onclick="nieuwMotor()">+ Nieuwe motor</button>
+      </div>
+      <div class="head-row" style="margin-bottom:20px">
         <div class="zoek-wrap">
           <span class="zoek-icon">🔍</span>
-          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op motornummer, klantnaam of zegelnummer…" value="${esc(zoek)}">
+          <input class="zoek-inp" id="zoek-inp" placeholder="Zoek op motornummer, klant of zegel…" value="${esc(zoek)}">
         </div>
-        <div style="display:flex;gap:6px" id="sort-knoppen"></div>
-        <button class="btn-blauw" onclick="nieuwMotor()">+ Nieuwe motor</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:600;color:#6b7280">Sorteer</span>
+          <div id="sort-knoppen" style="display:flex;gap:2px;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;padding:2px"></div>
+        </div>
       </div>
       <div id="motor-resultaten"></div>`;
     document.getElementById('zoek-inp')?.addEventListener('input', e=>{ zoek=e.target.value; renderResultaten(); });
@@ -289,8 +294,8 @@ function renderLijst(){
   // Update sorteerknopjes zonder de hele pagina opnieuw te bouwen
   const sk = document.getElementById('sort-knoppen');
   if(sk) sk.innerHTML=`
-    <button onclick="setSortering('datum')" style="${sortKnopStyle(sortering==='datum')}">📅 Datum</button>
-    <button onclick="setSortering('type')" style="${sortKnopStyle(sortering==='type')}">🔧 Type</button>`;
+    <button onclick="setSortering('datum')" style="${sortKnopStyle(sortering==='datum')}">Datum</button>
+    <button onclick="setSortering('type')" style="${sortKnopStyle(sortering==='type')}">Type</button>`;
   renderResultaten();
 }
 
