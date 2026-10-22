@@ -14,7 +14,7 @@ with merken(naam) as (values
 ),
 types(naam) as (values
   ('Cadet'), ('Junior'), ('Senior'),                                              -- Honda
-  ('X30 Mini'), ('X30 Junior'), ('X30 Senior'), ('Super Shifter'), ('S125'),      -- IAME
+  ('X30 Mini'), ('X30 Junior'), ('X30 Senior'), ('Super Shifter'), ('S125'), ('KA100'), -- IAME
   ('KZ')                                                                          -- TM
 ),
 mo as (

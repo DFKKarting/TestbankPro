@@ -2,7 +2,7 @@
 // Eén centrale lijst voor de hele website. Nieuw merk of type? Voeg het hier toe.
 const MOTOR_TYPES = {
   'Honda': ['Cadet', 'Junior', 'Senior'],
-  'IAME':  ['X30 Mini', 'X30 Junior', 'X30 Senior', 'Super Shifter', 'S125'],
+  'IAME':  ['X30 Mini', 'X30 Junior', 'X30 Senior', 'Super Shifter', 'S125', 'KA100'],
   'TM':    ['KZ'],
 };
 
