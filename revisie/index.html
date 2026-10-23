@@ -342,14 +342,9 @@ function renderLijst(){
   const dezeM = revisies.filter(r=>(r.datum||'').startsWith(dm)).length;
   const motoren = new Set(revisies.map(r=>r.motorNummer).filter(Boolean)).size;
 
-  const groepen = {};
-  const groepenFact = {};
-  gefilterd.forEach(r=>{
-    const mn = r.motorNummer?.trim() || '(geen motor)';
-    const target = r.gefactureerd ? groepenFact : groepen;
-    if(!target[mn]) target[mn]=[];
-    target[mn].push(r);
-  });
+  // Gewoon op revisiedatum (nieuwste eerst), opgesplitst in te factureren / gefactureerd
+  const nietGefact = gefilterd.filter(r=>!r.gefactureerd);
+  const gefact = gefilterd.filter(r=>r.gefactureerd);
 
   let statsHtml = revisies.length ? `
     <div class="stats-grid">
@@ -368,24 +363,16 @@ function renderLijst(){
   } else if(gefilterd.length===0){
     lijstHtml = `<div class="empty-state"><div class="empty-title">Geen resultaten voor "${esc(zoek)}"</div></div>`;
   } else {
-    const renderGroep = (grps) => {
-      const sorted = Object.entries(grps).sort(([,a],[,b])=>(b[0]?.datum||'').localeCompare(a[0]?.datum||''));
-      let h = '';
-      sorted.forEach(([mn,lijst])=>{
-        h += `<div class="sectie-label">${esc(mn)}</div>`;
-        lijst.forEach(r=>{ h += revisieKaart(r); });
-      });
-      return h;
-    };
-    const heeftNiet = Object.keys(groepen).length > 0;
-    const heeftFact = Object.keys(groepenFact).length > 0;
+    const renderGroep = lijst => lijst.map(revisieKaart).join('');
+    const heeftNiet = nietGefact.length > 0;
+    const heeftFact = gefact.length > 0;
     if(heeftNiet){
       lijstHtml += `<div class="sectie-label" style="color:#92400e;background:#fef3c7;padding:4px 10px;border-radius:6px;display:inline-block;margin-bottom:6px">Te factureren</div>`;
-      lijstHtml += renderGroep(groepen);
+      lijstHtml += renderGroep(nietGefact);
     }
     if(heeftFact){
       lijstHtml += `<div class="sectie-label" style="color:#065f46;background:#d1fae5;padding:4px 10px;border-radius:6px;display:inline-block;margin-top:${heeftNiet?'20px':'0'};margin-bottom:6px">Gefactureerd</div>`;
-      lijstHtml += renderGroep(groepenFact);
+      lijstHtml += renderGroep(gefact);
     }
   }
 
